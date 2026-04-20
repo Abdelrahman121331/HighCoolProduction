@@ -53,8 +53,8 @@ export function ItemsTable({
           <td>
             <div className="hc-role-tags">
               {item.isSellable ? <RoleTag label="Sellable" /> : null}
-              {item.isComponent ? <RoleTag label="Component" /> : null}
-              {!item.isSellable && !item.isComponent ? <span className="hc-table__subtitle">No roles</span> : null}
+              {item.hasComponents ? <RoleTag label="Has Components" /> : null}
+              {!item.isSellable && !item.hasComponents ? <span className="hc-table__subtitle">No special flags</span> : null}
             </div>
           </td>
           <td>

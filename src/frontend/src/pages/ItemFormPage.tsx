@@ -6,8 +6,11 @@ import { Button, Checkbox, EmptyState, Field, Input, Select, SkeletonLoader, use
 import {
   createItem,
   getItem,
+  listItems,
   listUoms,
   updateItem,
+  type Item,
+  type ItemComponentFormValues,
   type ItemFormValues,
   type Uom,
 } from "../services/masterDataApi";
@@ -18,7 +21,8 @@ const initialValues: ItemFormValues = {
   baseUomId: "",
   isActive: true,
   isSellable: true,
-  isComponent: false,
+  hasComponents: false,
+  components: [],
 };
 
 export function ItemFormPage() {
@@ -27,6 +31,7 @@ export function ItemFormPage() {
   const { itemId } = useParams();
   const isEdit = Boolean(itemId);
   const [values, setValues] = useState<ItemFormValues>(initialValues);
+  const [items, setItems] = useState<Item[]>([]);
   const [uoms, setUoms] = useState<Uom[]>([]);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [formError, setFormError] = useState("");
@@ -40,13 +45,15 @@ export function ItemFormPage() {
     async function load() {
       try {
         setLoading(true);
-        const [uomList, item] = await Promise.all([
+        const [uomList, itemList, item] = await Promise.all([
           listUoms("", "active"),
+          listItems("", "active"),
           itemId ? getItem(itemId) : Promise.resolve(null),
         ]);
 
         if (active) {
           setUoms(uomList);
+          setItems(itemList);
           if (item) {
             setValues({
               code: item.code,
@@ -54,7 +61,12 @@ export function ItemFormPage() {
               baseUomId: item.baseUomId,
               isActive: item.isActive,
               isSellable: item.isSellable,
-              isComponent: item.isComponent,
+              hasComponents: item.hasComponents,
+              components: item.components.map((component) => ({
+                componentItemId: component.componentItemId,
+                uomId: component.uomId,
+                quantity: component.quantity,
+              })),
             });
           } else if (uomList.length > 0) {
             setValues((current) => ({ ...current, baseUomId: current.baseUomId || uomList[0].id }));
@@ -93,8 +105,39 @@ export function ItemFormPage() {
       nextErrors.baseUomId = ["Base UOM is required."];
     }
 
-    if (!currentValues.isSellable && !currentValues.isComponent) {
-      nextErrors.isSellable = ["Item must be sellable, component, or both."];
+    if (currentValues.hasComponents && currentValues.components.length === 0) {
+      nextErrors.components = ["Add at least one component row when the item is marked as having components."];
+    }
+
+    if (!currentValues.hasComponents && currentValues.components.length > 0) {
+      nextErrors.components = ["Clear component rows or mark the item as having components."];
+    }
+
+    currentValues.components.forEach((component, index) => {
+      if (!component.componentItemId) {
+        nextErrors[`components.${index}.componentItemId`] = ["Component item is required."];
+      }
+
+      if (!component.uomId) {
+        nextErrors[`components.${index}.uomId`] = ["UOM is required."];
+      }
+
+      if (component.quantity <= 0) {
+        nextErrors[`components.${index}.quantity`] = ["Quantity must be greater than zero."];
+      }
+
+      if (itemId && component.componentItemId === itemId) {
+        nextErrors[`components.${index}.componentItemId`] = ["Item components cannot reference the same item as both parent and component."];
+      }
+    });
+
+    const duplicateIds = currentValues.components
+      .map((component) => component.componentItemId)
+      .filter(Boolean)
+      .filter((componentId, index, allIds) => allIds.indexOf(componentId) !== index);
+
+    if (duplicateIds.length > 0) {
+      nextErrors.components = ["Duplicate component rows are not allowed."];
     }
 
     return nextErrors;
@@ -138,6 +181,42 @@ export function ItemFormPage() {
   function setValue<Key extends keyof ItemFormValues>(key: Key, value: ItemFormValues[Key]) {
     setValues((current) => ({ ...current, [key]: value }));
   }
+
+  function addComponentRow() {
+    setValues((current) => ({
+      ...current,
+      hasComponents: true,
+      components: [
+        ...current.components,
+        {
+          componentItemId: "",
+          uomId: current.baseUomId,
+          quantity: 1,
+        },
+      ],
+    }));
+  }
+
+  function updateComponentRow<Key extends keyof ItemComponentFormValues>(
+    index: number,
+    key: Key,
+    value: ItemComponentFormValues[Key],
+  ) {
+    setValues((current) => ({
+      ...current,
+      components: current.components.map((component, componentIndex) =>
+        componentIndex === index ? { ...component, [key]: value } : component),
+    }));
+  }
+
+  function removeComponentRow(index: number) {
+    setValues((current) => ({
+      ...current,
+      components: current.components.filter((_, componentIndex) => componentIndex !== index),
+    }));
+  }
+
+  const componentCandidates = items.filter((item) => item.id !== itemId);
 
   return (
     <FormPageLayout
@@ -198,9 +277,55 @@ export function ItemFormPage() {
 
           <FormSection title="Roles and status" description="Choose how the item is used.">
             <Checkbox checked={values.isSellable} label="Sellable item" onChange={(event) => setValue("isSellable", event.target.checked)} />
-            <Checkbox checked={values.isComponent} label="Component item" onChange={(event) => setValue("isComponent", event.target.checked)} />
-            {errors.isSellable ? <small className="hc-field-error">{errors.isSellable[0]}</small> : null}
+            <Checkbox checked={values.hasComponents} label="Has components" onChange={(event) => setValue("hasComponents", event.target.checked)} />
             <Checkbox checked={values.isActive} label="Active item" onChange={(event) => setValue("isActive", event.target.checked)} />
+          </FormSection>
+
+          <FormSection title="Components" description="Manage child component rows inside the item.">
+            {errors.components ? <div className="hc-inline-error">{errors.components[0]}</div> : null}
+
+            {values.components.map((component, index) => (
+              <div key={`${index}-${component.componentItemId}`} className="hc-card hc-card--md">
+                <div className="hc-form-grid">
+                  <Field label="Component item" required>
+                    <Select value={component.componentItemId} onChange={(event) => updateComponentRow(index, "componentItemId", event.target.value)}>
+                      <option value="">Select component item</option>
+                      {componentCandidates.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.code} - {item.name}
+                        </option>
+                      ))}
+                    </Select>
+                    {errors[`components.${index}.componentItemId`] ? <small className="hc-field-error">{errors[`components.${index}.componentItemId`][0]}</small> : null}
+                  </Field>
+
+                  <Field label="UOM" required>
+                    <Select value={component.uomId} onChange={(event) => updateComponentRow(index, "uomId", event.target.value)}>
+                      <option value="">Select UOM</option>
+                      {uoms.map((uom) => (
+                        <option key={uom.id} value={uom.id}>
+                          {uom.code} - {uom.name}
+                        </option>
+                      ))}
+                    </Select>
+                    {errors[`components.${index}.uomId`] ? <small className="hc-field-error">{errors[`components.${index}.uomId`][0]}</small> : null}
+                  </Field>
+
+                  <Field label="Quantity" required>
+                    <Input min={0.000001} step="0.000001" type="number" value={component.quantity} onChange={(event) => updateComponentRow(index, "quantity", Number(event.target.value))} />
+                    {errors[`components.${index}.quantity`] ? <small className="hc-field-error">{errors[`components.${index}.quantity`][0]}</small> : null}
+                  </Field>
+                </div>
+
+                <div className="hc-form-actions">
+                  <Button type="button" variant="ghost" onClick={() => removeComponentRow(index)}>Remove row</Button>
+                </div>
+              </div>
+            ))}
+
+            <div className="hc-form-actions">
+              <Button type="button" variant="secondary" onClick={addComponentRow}>Add component row</Button>
+            </div>
           </FormSection>
 
           <div className="hc-form-actions">

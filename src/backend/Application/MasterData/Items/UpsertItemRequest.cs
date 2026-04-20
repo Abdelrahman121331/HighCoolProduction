@@ -6,4 +6,5 @@ public sealed record UpsertItemRequest(
     Guid BaseUomId,
     bool IsActive,
     bool IsSellable,
-    bool IsComponent);
+    bool HasComponents,
+    IReadOnlyList<UpsertItemComponentRequest> Components);

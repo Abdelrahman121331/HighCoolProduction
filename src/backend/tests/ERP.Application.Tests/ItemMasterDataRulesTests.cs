@@ -1,10 +1,9 @@
 using ERP.Application.Common.Exceptions;
-using ERP.Application.MasterData.ItemComponents;
-using ERP.Application.MasterData.ItemUomConversions;
 using ERP.Application.MasterData.Items;
+using ERP.Application.MasterData.UomConversions;
 using ERP.Domain.MasterData;
-using ERP.Infrastructure.MasterData.ItemComponents;
-using ERP.Infrastructure.MasterData.ItemUomConversions;
+using ERP.Infrastructure.MasterData.Items;
+using ERP.Infrastructure.MasterData.UomConversions;
 using ERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -14,60 +13,107 @@ namespace ERP.Application.Tests;
 public sealed class ItemMasterDataRulesTests
 {
     [Fact]
-    public void ItemValidator_ShouldRequireSellableOrComponentRole()
+    public void ItemValidator_ShouldRequireRowsWhenHasComponentsIsTrue()
     {
         var validator = new UpsertItemRequestValidator();
-        var model = new UpsertItemRequest("ITM-1", "Item 1", Guid.NewGuid(), true, false, false);
+        var model = new UpsertItemRequest("ITM-1", "Assembly", Guid.NewGuid(), true, true, true, []);
 
         var result = validator.Validate(model);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, error => error.ErrorMessage.Contains("sellable, component, or both", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Errors, error => error.ErrorMessage.Contains("at least one component row", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task ItemComponentService_ShouldRejectDuplicateParentComponentPair()
+    public async Task ItemService_ShouldRejectDuplicateComponentRows()
     {
         await using var dbContext = CreateDbContext();
         var (uom, parentItem, componentItem) = await SeedItemsAsync(dbContext);
+        var service = new ItemService(dbContext);
 
-        dbContext.ItemComponents.Add(new ItemComponent
-        {
-            ParentItemId = parentItem.Id,
-            ComponentItemId = componentItem.Id,
-            Quantity = 1m,
-            CreatedBy = "seed"
-        });
-        await dbContext.SaveChangesAsync();
-
-        var service = new ItemComponentService(dbContext);
-        var request = new UpsertItemComponentRequest(parentItem.Id, componentItem.Id, 2m);
+        var request = new UpsertItemRequest(
+            "ITM-NEW",
+            "New Assembly",
+            uom.Id,
+            true,
+            true,
+            true,
+            [
+                new UpsertItemComponentRequest(componentItem.Id, uom.Id, 1m),
+                new UpsertItemComponentRequest(componentItem.Id, uom.Id, 2m)
+            ]);
 
         var exception = await Assert.ThrowsAsync<DuplicateEntityException>(() =>
             service.CreateAsync(request, "tester", CancellationToken.None));
 
-        Assert.Contains("already exists", exception.Message, StringComparison.OrdinalIgnoreCase);
-        _ = uom;
+        Assert.Contains("duplicate component rows", exception.Message, StringComparison.OrdinalIgnoreCase);
+        _ = parentItem;
     }
 
     [Fact]
-    public async Task ItemComponentService_ShouldRejectSelfReference()
+    public async Task ItemService_ShouldRejectSelfReferencingComponentRows()
     {
         await using var dbContext = CreateDbContext();
-        var (_, parentItem, _) = await SeedItemsAsync(dbContext);
-        var service = new ItemComponentService(dbContext);
+        var (uom, parentItem, _) = await SeedItemsAsync(dbContext);
+        var service = new ItemService(dbContext);
+
+        var request = new UpsertItemRequest(
+            "ITM-SELF",
+            "Self Assembly",
+            uom.Id,
+            true,
+            true,
+            true,
+            [new UpsertItemComponentRequest(parentItem.Id, uom.Id, 1m)]);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.CreateAsync(new UpsertItemComponentRequest(parentItem.Id, parentItem.Id, 1m), "tester", CancellationToken.None));
+            service.UpdateAsync(parentItem.Id, request, "tester", CancellationToken.None));
 
-        Assert.Contains("different", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("same item", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task ItemUomConversionService_ShouldRejectDuplicateActivePair()
+    public async Task ItemService_ShouldRequireGlobalConversionWhenComponentUomDiffersFromBase()
     {
         await using var dbContext = CreateDbContext();
-        var (uom, item, _) = await SeedItemsAsync(dbContext);
+        var (pieceUom, parentItem, componentItem) = await SeedItemsAsync(dbContext);
+
+        var boxUom = new Uom
+        {
+            Code = "BOX",
+            Name = "Box",
+            Precision = 0,
+            AllowsFraction = false,
+            IsActive = true,
+            CreatedBy = "seed"
+        };
+
+        dbContext.Uoms.Add(boxUom);
+        await dbContext.SaveChangesAsync();
+
+        var service = new ItemService(dbContext);
+        var request = new UpsertItemRequest(
+            "ITM-CONV",
+            "Assembly With Box",
+            pieceUom.Id,
+            true,
+            true,
+            true,
+            [new UpsertItemComponentRequest(componentItem.Id, boxUom.Id, 1m)]);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateAsync(request, "tester", CancellationToken.None));
+
+        Assert.Contains("global UOM conversion is required", exception.Message, StringComparison.OrdinalIgnoreCase);
+        _ = parentItem;
+    }
+
+    [Fact]
+    public async Task UomConversionService_ShouldRejectDuplicateActivePair()
+    {
+        await using var dbContext = CreateDbContext();
+        var (uom, _, _) = await SeedItemsAsync(dbContext);
+
         var alternateUom = new Uom
         {
             Code = "BOX",
@@ -81,27 +127,23 @@ public sealed class ItemMasterDataRulesTests
         dbContext.Uoms.Add(alternateUom);
         await dbContext.SaveChangesAsync();
 
-        dbContext.ItemUomConversions.Add(new ItemUomConversion
+        dbContext.UomConversions.Add(new UomConversion
         {
-            ItemId = item.Id,
-            FromUomId = uom.Id,
-            ToUomId = alternateUom.Id,
+            FromUomId = alternateUom.Id,
+            ToUomId = uom.Id,
             Factor = 12m,
             RoundingMode = RoundingMode.Round,
-            MinFraction = 0m,
             IsActive = true,
             CreatedBy = "seed"
         });
         await dbContext.SaveChangesAsync();
 
-        var service = new ItemUomConversionService(dbContext);
-        var request = new UpsertItemUomConversionRequest(
-            item.Id,
-            uom.Id,
+        var service = new UomConversionService(dbContext);
+        var request = new UpsertUomConversionRequest(
             alternateUom.Id,
+            uom.Id,
             24m,
             RoundingMode.Round,
-            0m,
             true);
 
         var exception = await Assert.ThrowsAsync<DuplicateEntityException>(() =>
@@ -141,7 +183,7 @@ public sealed class ItemMasterDataRulesTests
             BaseUomId = uom.Id,
             IsActive = true,
             IsSellable = true,
-            IsComponent = false,
+            HasComponents = true,
             CreatedBy = "seed"
         };
 
@@ -152,7 +194,7 @@ public sealed class ItemMasterDataRulesTests
             BaseUomId = uom.Id,
             IsActive = true,
             IsSellable = false,
-            IsComponent = true,
+            HasComponents = false,
             CreatedBy = "seed"
         };
 

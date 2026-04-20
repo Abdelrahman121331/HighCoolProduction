@@ -1,4 +1,5 @@
 using ERP.Domain.MasterData;
+using ERP.Domain.Shortages;
 using ERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -25,7 +26,7 @@ public sealed class DevelopmentDatabaseInitializer(
         using var scope = serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        await dbContext.Database.MigrateAsync(cancellationToken);
         await SeedAsync(dbContext, cancellationToken);
     }
 
@@ -105,7 +106,7 @@ public sealed class DevelopmentDatabaseInitializer(
             BaseUomId = pieceUom.Id,
             IsActive = true,
             IsSellable = true,
-            IsComponent = true,
+            HasComponents = false,
             CreatedBy = "system"
         };
 
@@ -116,7 +117,7 @@ public sealed class DevelopmentDatabaseInitializer(
             BaseUomId = kilogramUom.Id,
             IsActive = true,
             IsSellable = false,
-            IsComponent = true,
+            HasComponents = false,
             CreatedBy = "system"
         };
 
@@ -127,26 +128,47 @@ public sealed class DevelopmentDatabaseInitializer(
             BaseUomId = pieceUom.Id,
             IsActive = true,
             IsSellable = true,
-            IsComponent = false,
+            HasComponents = true,
             CreatedBy = "system"
         };
 
         var itemComponent = new ItemComponent
         {
-            ParentItemId = coolingUnit.Id,
+            ItemId = coolingUnit.Id,
             ComponentItemId = fanMotor.Id,
+            UomId = pieceUom.Id,
             Quantity = 1m,
             CreatedBy = "system"
         };
 
-        var itemConversion = new ItemUomConversion
+        var itemConversion = new UomConversion
         {
-            ItemId = copperCoil.Id,
-            FromUomId = kilogramUom.Id,
+            FromUomId = pieceUom.Id,
             ToUomId = kilogramUom.Id,
-            Factor = 1m,
-            RoundingMode = RoundingMode.None,
-            MinFraction = 0m,
+            Factor = 0.25m,
+            RoundingMode = RoundingMode.Round,
+            IsActive = true,
+            CreatedBy = "system"
+        };
+
+        var transitShortageReason = new ShortageReasonCode
+        {
+            Code = "TRANSIT_SHORTAGE",
+            Name = "Transit shortage",
+            Description = "Quantity was short during receipt capture and needs investigation.",
+            AffectsSupplierBalance = false,
+            AffectsStock = false,
+            IsActive = true,
+            CreatedBy = "system"
+        };
+
+        var supplierShortageReason = new ShortageReasonCode
+        {
+            Code = "SUPPLIER_SHORT",
+            Name = "Supplier short supply",
+            Description = "Supplier delivered less than expected and the shortage should affect supplier follow-up.",
+            AffectsSupplierBalance = true,
+            AffectsStock = false,
             IsActive = true,
             CreatedBy = "system"
         };
@@ -156,7 +178,8 @@ public sealed class DevelopmentDatabaseInitializer(
         dbContext.Suppliers.AddRange(supplierA, supplierB);
         dbContext.Items.AddRange(fanMotor, copperCoil, coolingUnit);
         dbContext.ItemComponents.Add(itemComponent);
-        dbContext.ItemUomConversions.Add(itemConversion);
+        dbContext.UomConversions.Add(itemConversion);
+        dbContext.ShortageReasonCodes.AddRange(transitShortageReason, supplierShortageReason);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

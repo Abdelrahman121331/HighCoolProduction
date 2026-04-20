@@ -1,12 +1,15 @@
-import { MasterDataPageHeader } from "../masterData";
+import { Link } from "react-router-dom";
+import { PageHeader } from "../ui";
 
 export function ItemsPageHeader() {
   return (
-    <MasterDataPageHeader
+    <PageHeader
       title="Items"
-      description="Manage item records, UOM setup, and usage roles."
-      actionLabel="New item"
-      actionTo="/items/new"
+      actions={
+        <Link className="hc-button hc-button--primary hc-button--md" to="/items/new">
+          New item
+        </Link>
+      }
     />
   );
 }

@@ -12,9 +12,11 @@ public sealed class Item : AuditableEntity
 
     public Uom? BaseUom { get; set; }
 
+    public ICollection<ItemComponent> Components { get; set; } = new List<ItemComponent>();
+
     public bool IsActive { get; set; } = true;
 
     public bool IsSellable { get; set; }
 
-    public bool IsComponent { get; set; }
+    public bool HasComponents { get; set; }
 }

@@ -11,12 +11,16 @@ public sealed class ItemComponentConfiguration : AuditableEntityConfigurationBas
     {
         builder.ToTable("item_components");
 
-        builder.Property(entity => entity.ParentItemId)
-            .HasColumnName("parent_item_id")
+        builder.Property(entity => entity.ItemId)
+            .HasColumnName("item_id")
             .IsRequired();
 
         builder.Property(entity => entity.ComponentItemId)
             .HasColumnName("component_item_id")
+            .IsRequired();
+
+        builder.Property(entity => entity.UomId)
+            .HasColumnName("uom_id")
             .IsRequired();
 
         builder.Property(entity => entity.Quantity)
@@ -24,17 +28,17 @@ public sealed class ItemComponentConfiguration : AuditableEntityConfigurationBas
             .HasColumnType("decimal(18,6)")
             .IsRequired();
 
-        builder.HasOne(entity => entity.ParentItem)
-            .WithMany()
-            .HasForeignKey(entity => entity.ParentItemId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.HasOne(entity => entity.ComponentItem)
             .WithMany()
             .HasForeignKey(entity => entity.ComponentItemId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(entity => new { entity.ParentItemId, entity.ComponentItemId })
+        builder.HasOne(entity => entity.Uom)
+            .WithMany()
+            .HasForeignKey(entity => entity.UomId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(entity => new { entity.ItemId, entity.ComponentItemId })
             .IsUnique();
     }
 }

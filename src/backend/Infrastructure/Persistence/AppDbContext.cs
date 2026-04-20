@@ -1,5 +1,8 @@
 using ERP.Domain.Common;
+using ERP.Domain.Inventory;
 using ERP.Domain.MasterData;
+using ERP.Domain.Purchasing;
+using ERP.Domain.Shortages;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Infrastructure.Persistence;
@@ -14,11 +17,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<ItemComponent> ItemComponents => Set<ItemComponent>();
 
-    public DbSet<ItemUomConversion> ItemUomConversions => Set<ItemUomConversion>();
+    public DbSet<UomConversion> UomConversions => Set<UomConversion>();
 
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
 
     public DbSet<Uom> Uoms => Set<Uom>();
+
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
+
+    public DbSet<PurchaseReceipt> PurchaseReceipts => Set<PurchaseReceipt>();
+
+    public DbSet<PurchaseReceiptLine> PurchaseReceiptLines => Set<PurchaseReceiptLine>();
+
+    public DbSet<PurchaseReceiptLineComponent> PurchaseReceiptLineComponents => Set<PurchaseReceiptLineComponent>();
+
+    public DbSet<StockLedgerEntry> StockLedgerEntries => Set<StockLedgerEntry>();
+
+    public DbSet<ShortageReasonCode> ShortageReasonCodes => Set<ShortageReasonCode>();
+
+    public DbSet<ShortageLedgerEntry> ShortageLedgerEntries => Set<ShortageLedgerEntry>();
 
     public override int SaveChanges()
     {

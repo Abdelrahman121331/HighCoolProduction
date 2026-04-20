@@ -40,21 +40,26 @@ export interface Item {
   baseUomId: string;
   baseUomCode: string;
   baseUomName: string;
+  imageUrl?: string;
   isActive: boolean;
   isSellable: boolean;
-  isComponent: boolean;
+  hasComponents: boolean;
+  components: ItemComponent[];
   createdAt: string;
   updatedAt: string | null;
 }
 
 export interface ItemComponent {
   id: string;
-  parentItemId: string;
-  parentItemCode: string;
-  parentItemName: string;
+  itemId: string;
   componentItemId: string;
   componentItemCode: string;
   componentItemName: string;
+  componentBaseUomId: string;
+  componentBaseUomCode: string;
+  uomId: string;
+  uomCode: string;
+  uomName: string;
   quantity: number;
   createdAt: string;
   updatedAt: string | null;
@@ -62,18 +67,16 @@ export interface ItemComponent {
 
 export type RoundingMode = "None" | "Round" | "Floor" | "Ceiling";
 
-export interface ItemUomConversion {
+export interface UomConversion {
   id: string;
-  itemId: string;
-  itemCode: string;
-  itemName: string;
   fromUomId: string;
   fromUomCode: string;
+  fromUomName: string;
   toUomId: string;
   toUomCode: string;
+  toUomName: string;
   factor: number;
   roundingMode: RoundingMode;
-  minFraction: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
@@ -109,22 +112,21 @@ export interface ItemFormValues {
   baseUomId: string;
   isActive: boolean;
   isSellable: boolean;
-  isComponent: boolean;
+  hasComponents: boolean;
+  components: ItemComponentFormValues[];
 }
 
 export interface ItemComponentFormValues {
-  parentItemId: string;
   componentItemId: string;
+  uomId: string;
   quantity: number;
 }
 
-export interface ItemUomConversionFormValues {
-  itemId: string;
+export interface UomConversionFormValues {
   fromUomId: string;
   toUomId: string;
   factor: number;
   roundingMode: RoundingMode;
-  minFraction: number;
   isActive: boolean;
 }
 
@@ -246,69 +248,28 @@ export function deactivateItem(id: string) {
   return requestJson<void>(`/api/items/${id}/deactivate`, { method: "POST" });
 }
 
-function buildItemComponentUrl(search?: string): string {
-  const url = new URL("/api/item-components", window.location.origin);
-  if (search) {
-    url.searchParams.set("search", search);
-  }
-
-  return `${url.pathname}${url.search}`;
+export function listUomConversions(search: string, status: string) {
+  return requestJson<UomConversion[]>(buildUrl("/api/uom-conversions", search, status));
 }
 
-export function listItemComponents(search: string) {
-  return requestJson<ItemComponent[]>(buildItemComponentUrl(search));
+export function getUomConversion(id: string) {
+  return requestJson<UomConversion>(`/api/uom-conversions/${id}`);
 }
 
-export function getItemComponent(id: string) {
-  return requestJson<ItemComponent>(`/api/item-components/${id}`);
-}
-
-export function createItemComponent(values: ItemComponentFormValues) {
-  return requestJson<ItemComponent>("/api/item-components", {
-    method: "POST",
-    body: JSON.stringify({
-      ...values,
-      quantity: Number(values.quantity),
-    }),
-  });
-}
-
-export function updateItemComponent(id: string, values: ItemComponentFormValues) {
-  return requestJson<ItemComponent>(`/api/item-components/${id}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      ...values,
-      quantity: Number(values.quantity),
-    }),
-  });
-}
-
-export function deleteItemComponent(id: string) {
-  return requestJson<void>(`/api/item-components/${id}`, { method: "DELETE" });
-}
-
-export function listItemUomConversions(search: string, status: string) {
-  return requestJson<ItemUomConversion[]>(buildUrl("/api/item-uom-conversions", search, status));
-}
-
-export function getItemUomConversion(id: string) {
-  return requestJson<ItemUomConversion>(`/api/item-uom-conversions/${id}`);
-}
-
-export function createItemUomConversion(values: ItemUomConversionFormValues) {
-  return requestJson<ItemUomConversion>("/api/item-uom-conversions", {
+export function createUomConversion(values: UomConversionFormValues) {
+  return requestJson<UomConversion>("/api/uom-conversions", {
     method: "POST",
     body: JSON.stringify(values),
   });
 }
 
-export function updateItemUomConversion(id: string, values: ItemUomConversionFormValues) {
-  return requestJson<ItemUomConversion>(`/api/item-uom-conversions/${id}`, {
+export function updateUomConversion(id: string, values: UomConversionFormValues) {
+  return requestJson<UomConversion>(`/api/uom-conversions/${id}`, {
     method: "PUT",
     body: JSON.stringify(values),
   });
 }
 
-export function deactivateItemUomConversion(id: string) {
-  return requestJson<void>(`/api/item-uom-conversions/${id}/deactivate`, { method: "POST" });
+export function deactivateUomConversion(id: string) {
+  return requestJson<void>(`/api/uom-conversions/${id}/deactivate`, { method: "POST" });
 }

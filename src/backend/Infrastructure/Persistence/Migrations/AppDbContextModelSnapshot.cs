@@ -22,6 +22,105 @@ namespace ERP.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ERP.Domain.Inventory.StockLedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("BaseQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("base_qty");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("item_id");
+
+                    b.Property<decimal>("QtyIn")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("qty_in");
+
+                    b.Property<decimal>("QtyOut")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("qty_out");
+
+                    b.Property<decimal>("RunningBalanceQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("running_balance_qty");
+
+                    b.Property<Guid>("SourceDocId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("source_doc_id");
+
+                    b.Property<string>("SourceDocType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("source_doc_type");
+
+                    b.Property<Guid?>("SourceLineId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("source_line_id");
+
+                    b.Property<decimal?>("TotalCost")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("total_cost");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("transaction_date");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("transaction_type");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("unit_cost");
+
+                    b.Property<Guid>("UomId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("uom_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UomId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("ItemId", "WarehouseId", "TransactionDate");
+
+                    b.HasIndex("SourceDocId", "SourceLineId", "TransactionType")
+                        .IsUnique()
+                        .HasFilter("[source_line_id] IS NOT NULL");
+
+                    b.ToTable("stock_ledger_entries", (string)null);
+                });
+
             modelBuilder.Entity("ERP.Domain.MasterData.Item", b =>
                 {
                     b.Property<Guid>("Id")
@@ -47,13 +146,13 @@ namespace ERP.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(128)")
                         .HasColumnName("created_by");
 
+                    b.Property<bool>("HasComponents")
+                        .HasColumnType("bit")
+                        .HasColumnName("has_components");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit")
                         .HasColumnName("is_active");
-
-                    b.Property<bool>("IsComponent")
-                        .HasColumnType("bit")
-                        .HasColumnName("is_component");
 
                     b.Property<bool>("IsSellable")
                         .HasColumnType("bit")
@@ -105,13 +204,17 @@ namespace ERP.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(128)")
                         .HasColumnName("created_by");
 
-                    b.Property<Guid>("ParentItemId")
+                    b.Property<Guid>("ItemId")
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("parent_item_id");
+                        .HasColumnName("item_id");
 
                     b.Property<decimal>("Quantity")
                         .HasColumnType("decimal(18,6)")
                         .HasColumnName("quantity");
+
+                    b.Property<Guid>("UomId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("uom_id");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2")
@@ -126,76 +229,12 @@ namespace ERP.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ComponentItemId");
 
-                    b.HasIndex("ParentItemId", "ComponentItemId")
+                    b.HasIndex("UomId");
+
+                    b.HasIndex("ItemId", "ComponentItemId")
                         .IsUnique();
 
                     b.ToTable("item_components", (string)null);
-                });
-
-            modelBuilder.Entity("ERP.Domain.MasterData.ItemUomConversion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
-                        .HasColumnName("created_by");
-
-                    b.Property<decimal>("Factor")
-                        .HasColumnType("decimal(18,6)")
-                        .HasColumnName("factor");
-
-                    b.Property<Guid>("FromUomId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("from_uom_id");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
-                        .HasColumnName("is_active");
-
-                    b.Property<Guid>("ItemId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("item_id");
-
-                    b.Property<decimal>("MinFraction")
-                        .HasColumnType("decimal(18,6)")
-                        .HasColumnName("min_fraction");
-
-                    b.Property<string>("RoundingMode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasColumnName("rounding_mode");
-
-                    b.Property<Guid>("ToUomId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("to_uom_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FromUomId");
-
-                    b.HasIndex("ToUomId");
-
-                    b.HasIndex("ItemId", "FromUomId", "ToUomId", "IsActive")
-                        .IsUnique();
-
-                    b.ToTable("item_uom_conversions", (string)null);
                 });
 
             modelBuilder.Entity("ERP.Domain.MasterData.Supplier", b =>
@@ -322,6 +361,62 @@ namespace ERP.Infrastructure.Persistence.Migrations
                     b.ToTable("uoms", (string)null);
                 });
 
+            modelBuilder.Entity("ERP.Domain.MasterData.UomConversion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<decimal>("Factor")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("factor");
+
+                    b.Property<Guid>("FromUomId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("from_uom_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("RoundingMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("rounding_mode");
+
+                    b.Property<Guid>("ToUomId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("to_uom_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ToUomId");
+
+                    b.HasIndex("FromUomId", "ToUomId", "IsActive")
+                        .IsUnique();
+
+                    b.ToTable("uom_conversions", (string)null);
+                });
+
             modelBuilder.Entity("ERP.Domain.MasterData.Warehouse", b =>
                 {
                     b.Property<Guid>("Id")
@@ -377,6 +472,541 @@ namespace ERP.Infrastructure.Persistence.Migrations
                     b.ToTable("warehouses", (string)null);
                 });
 
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("ExpectedDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("expected_date");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("order_date");
+
+                    b.Property<string>("PoNo")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("po_no");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderDate");
+
+                    b.HasIndex("PoNo")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("purchase_orders", (string)null);
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("item_id");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("int")
+                        .HasColumnName("line_no");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<decimal>("OrderedQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("ordered_qty");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_order_id");
+
+                    b.Property<Guid>("UomId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("uom_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("UomId");
+
+                    b.HasIndex("PurchaseOrderId", "LineNo")
+                        .IsUnique();
+
+                    b.ToTable("purchase_order_lines", (string)null);
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid?>("PurchaseOrderId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_order_id");
+
+                    b.Property<DateTime>("ReceiptDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("receipt_date");
+
+                    b.Property<string>("ReceiptNo")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("receipt_no");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PurchaseOrderId");
+
+                    b.HasIndex("ReceiptDate");
+
+                    b.HasIndex("ReceiptNo")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("purchase_receipts", (string)null);
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseReceiptLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("item_id");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("int")
+                        .HasColumnName("line_no");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<decimal?>("OrderedQtySnapshot")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("ordered_qty_snapshot");
+
+                    b.Property<Guid?>("PurchaseOrderLineId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_order_line_id");
+
+                    b.Property<Guid>("PurchaseReceiptId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_receipt_id");
+
+                    b.Property<decimal>("ReceivedQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("received_qty");
+
+                    b.Property<Guid>("UomId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("uom_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("PurchaseOrderLineId");
+
+                    b.HasIndex("UomId");
+
+                    b.HasIndex("PurchaseReceiptId", "LineNo")
+                        .IsUnique();
+
+                    b.ToTable("purchase_receipt_lines", (string)null);
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseReceiptLineComponent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ActualReceivedQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("actual_received_qty");
+
+                    b.Property<Guid>("ComponentItemId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("component_item_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<decimal>("ExpectedQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("expected_qty");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("PurchaseReceiptLineId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_receipt_line_id");
+
+                    b.Property<Guid?>("ShortageReasonCodeId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("shortage_reason_code_id");
+
+                    b.Property<Guid>("UomId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("uom_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentItemId");
+
+                    b.HasIndex("ShortageReasonCodeId");
+
+                    b.HasIndex("UomId");
+
+                    b.HasIndex("PurchaseReceiptLineId", "ComponentItemId")
+                        .IsUnique();
+
+                    b.ToTable("purchase_receipt_line_components", (string)null);
+                });
+
+            modelBuilder.Entity("ERP.Domain.Shortages.ShortageLedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ActualQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("actual_qty");
+
+                    b.Property<bool>("AffectsSupplierBalance")
+                        .HasColumnType("bit")
+                        .HasColumnName("affects_supplier_balance");
+
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("approval_status");
+
+                    b.Property<Guid>("ComponentItemId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("component_item_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<decimal>("ExpectedQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("expected_qty");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("item_id");
+
+                    b.Property<Guid?>("PurchaseOrderId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_order_id");
+
+                    b.Property<Guid?>("PurchaseOrderLineId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_order_line_id");
+
+                    b.Property<Guid>("PurchaseReceiptId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_receipt_id");
+
+                    b.Property<Guid>("PurchaseReceiptLineId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("purchase_receipt_line_id");
+
+                    b.Property<decimal>("ShortageQty")
+                        .HasColumnType("decimal(18,6)")
+                        .HasColumnName("shortage_qty");
+
+                    b.Property<Guid>("ShortageReasonCodeId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("shortage_reason_code_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentItemId");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("PurchaseOrderId");
+
+                    b.HasIndex("PurchaseOrderLineId");
+
+                    b.HasIndex("PurchaseReceiptId");
+
+                    b.HasIndex("PurchaseReceiptLineId");
+
+                    b.HasIndex("ShortageReasonCodeId");
+
+                    b.HasIndex("PurchaseReceiptLineId", "ComponentItemId")
+                        .IsUnique();
+
+                    b.ToTable("shortage_ledger_entries", (string)null);
+                });
+
+            modelBuilder.Entity("ERP.Domain.Shortages.ShortageReasonCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AffectsStock")
+                        .HasColumnType("bit")
+                        .HasColumnName("affects_stock");
+
+                    b.Property<bool>("AffectsSupplierBalance")
+                        .HasColumnType("bit")
+                        .HasColumnName("affects_supplier_balance");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("name");
+
+                    b.Property<bool>("RequiresApproval")
+                        .HasColumnType("bit")
+                        .HasColumnName("requires_approval");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("shortage_reason_codes", (string)null);
+                });
+
+            modelBuilder.Entity("ERP.Domain.Inventory.StockLedgerEntry", b =>
+                {
+                    b.HasOne("ERP.Domain.MasterData.Item", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.MasterData.Uom", "Uom")
+                        .WithMany()
+                        .HasForeignKey("UomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.MasterData.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+
+                    b.Navigation("Uom");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("ERP.Domain.MasterData.Item", b =>
                 {
                     b.HasOne("ERP.Domain.MasterData.Uom", "BaseUom")
@@ -396,28 +1026,30 @@ namespace ERP.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ERP.Domain.MasterData.Item", "ParentItem")
+                    b.HasOne("ERP.Domain.MasterData.Item", "Item")
+                        .WithMany("Components")
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.MasterData.Uom", "Uom")
                         .WithMany()
-                        .HasForeignKey("ParentItemId")
+                        .HasForeignKey("UomId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ComponentItem");
 
-                    b.Navigation("ParentItem");
+                    b.Navigation("Item");
+
+                    b.Navigation("Uom");
                 });
 
-            modelBuilder.Entity("ERP.Domain.MasterData.ItemUomConversion", b =>
+            modelBuilder.Entity("ERP.Domain.MasterData.UomConversion", b =>
                 {
                     b.HasOne("ERP.Domain.MasterData.Uom", "FromUom")
                         .WithMany()
                         .HasForeignKey("FromUomId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ERP.Domain.MasterData.Item", "Item")
-                        .WithMany()
-                        .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -429,9 +1061,216 @@ namespace ERP.Infrastructure.Persistence.Migrations
 
                     b.Navigation("FromUom");
 
+                    b.Navigation("ToUom");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseOrder", b =>
+                {
+                    b.HasOne("ERP.Domain.MasterData.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseOrderLine", b =>
+                {
+                    b.HasOne("ERP.Domain.MasterData.Item", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseOrder", "PurchaseOrder")
+                        .WithMany("Lines")
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.MasterData.Uom", "Uom")
+                        .WithMany()
+                        .HasForeignKey("UomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Item");
 
-                    b.Navigation("ToUom");
+                    b.Navigation("PurchaseOrder");
+
+                    b.Navigation("Uom");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseReceipt", b =>
+                {
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseOrder", "PurchaseOrder")
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ERP.Domain.MasterData.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.MasterData.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PurchaseOrder");
+
+                    b.Navigation("Supplier");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseReceiptLine", b =>
+                {
+                    b.HasOne("ERP.Domain.MasterData.Item", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseOrderLine", "PurchaseOrderLine")
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseReceipt", "PurchaseReceipt")
+                        .WithMany("Lines")
+                        .HasForeignKey("PurchaseReceiptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.MasterData.Uom", "Uom")
+                        .WithMany()
+                        .HasForeignKey("UomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+
+                    b.Navigation("PurchaseOrderLine");
+
+                    b.Navigation("PurchaseReceipt");
+
+                    b.Navigation("Uom");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseReceiptLineComponent", b =>
+                {
+                    b.HasOne("ERP.Domain.MasterData.Item", "ComponentItem")
+                        .WithMany()
+                        .HasForeignKey("ComponentItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseReceiptLine", "PurchaseReceiptLine")
+                        .WithMany("Components")
+                        .HasForeignKey("PurchaseReceiptLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.Shortages.ShortageReasonCode", "ShortageReasonCode")
+                        .WithMany()
+                        .HasForeignKey("ShortageReasonCodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ERP.Domain.MasterData.Uom", "Uom")
+                        .WithMany()
+                        .HasForeignKey("UomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ComponentItem");
+
+                    b.Navigation("PurchaseReceiptLine");
+
+                    b.Navigation("ShortageReasonCode");
+
+                    b.Navigation("Uom");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Shortages.ShortageLedgerEntry", b =>
+                {
+                    b.HasOne("ERP.Domain.MasterData.Item", "ComponentItem")
+                        .WithMany()
+                        .HasForeignKey("ComponentItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.MasterData.Item", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseOrder", "PurchaseOrder")
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseOrderLine", "PurchaseOrderLine")
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseReceipt", "PurchaseReceipt")
+                        .WithMany()
+                        .HasForeignKey("PurchaseReceiptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.Purchasing.PurchaseReceiptLine", "PurchaseReceiptLine")
+                        .WithMany()
+                        .HasForeignKey("PurchaseReceiptLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERP.Domain.Shortages.ShortageReasonCode", "ShortageReasonCode")
+                        .WithMany()
+                        .HasForeignKey("ShortageReasonCodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ComponentItem");
+
+                    b.Navigation("Item");
+
+                    b.Navigation("PurchaseOrder");
+
+                    b.Navigation("PurchaseOrderLine");
+
+                    b.Navigation("PurchaseReceipt");
+
+                    b.Navigation("PurchaseReceiptLine");
+
+                    b.Navigation("ShortageReasonCode");
+                });
+
+            modelBuilder.Entity("ERP.Domain.MasterData.Item", b =>
+                {
+                    b.Navigation("Components");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseOrder", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseReceipt", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("ERP.Domain.Purchasing.PurchaseReceiptLine", b =>
+                {
+                    b.Navigation("Components");
                 });
 #pragma warning restore 612, 618
         }

@@ -9,6 +9,7 @@ public sealed record ItemDto(
     string BaseUomName,
     bool IsActive,
     bool IsSellable,
-    bool IsComponent,
+    bool HasComponents,
+    IReadOnlyList<ItemComponentDto> Components,
     DateTime CreatedAt,
     DateTime? UpdatedAt);

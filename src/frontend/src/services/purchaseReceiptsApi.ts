@@ -1,0 +1,184 @@
+import { requestJson } from "./api";
+
+export type DocumentStatus = "Draft" | "Posted" | "Canceled";
+
+export interface PurchaseReceiptListItem {
+  id: string;
+  receiptNo: string;
+  supplierId: string;
+  supplierCode: string;
+  supplierName: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  purchaseOrderId: string | null;
+  purchaseOrderNo: string | null;
+  receiptDate: string;
+  status: DocumentStatus;
+  lineCount: number;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface PurchaseReceiptLineComponent {
+  id: string;
+  componentItemId: string;
+  componentItemCode: string;
+  componentItemName: string;
+  expectedQty: number;
+  actualReceivedQty: number;
+  uomId: string;
+  uomCode: string;
+  uomName: string;
+  shortageReasonCodeId: string | null;
+  shortageReasonCodeCode: string | null;
+  shortageReasonCodeName: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface ShortageReasonCode {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  affectsSupplierBalance: boolean;
+  affectsStock: boolean;
+  requiresApproval: boolean;
+}
+
+export interface PurchaseReceiptLine {
+  id: string;
+  lineNo: number;
+  purchaseOrderLineId: string | null;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  orderedQtySnapshot: number | null;
+  receivedQty: number;
+  uomId: string;
+  uomCode: string;
+  uomName: string;
+  notes: string | null;
+  components: PurchaseReceiptLineComponent[];
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface PurchaseReceipt {
+  id: string;
+  receiptNo: string;
+  supplierId: string;
+  supplierCode: string;
+  supplierName: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  purchaseOrderId: string | null;
+  purchaseOrderNo: string | null;
+  receiptDate: string;
+  notes: string | null;
+  status: DocumentStatus;
+  lines: PurchaseReceiptLine[];
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface PurchaseReceiptLineComponentFormValues {
+  componentItemId: string;
+  expectedQty: number;
+  actualReceivedQty: number;
+  uomId: string;
+  shortageReasonCodeId: string;
+  notes: string;
+}
+
+export interface PurchaseReceiptLineFormValues {
+  lineNo: number;
+  purchaseOrderLineId: string;
+  itemId: string;
+  orderedQtySnapshot: number | "";
+  receivedQty: number | "";
+  uomId: string;
+  notes: string;
+  components: PurchaseReceiptLineComponentFormValues[];
+}
+
+export interface PurchaseReceiptFormValues {
+  receiptNo: string;
+  supplierId: string;
+  warehouseId: string;
+  purchaseOrderId: string;
+  receiptDate: string;
+  notes: string;
+  lines: PurchaseReceiptLineFormValues[];
+}
+
+function buildListUrl(search?: string): string {
+  const url = new URL("/api/purchase-receipts", window.location.origin);
+  if (search) {
+    url.searchParams.set("search", search);
+  }
+
+  return `${url.pathname}${url.search}`;
+}
+
+function normalizeDraftPayload(values: PurchaseReceiptFormValues) {
+  return {
+    receiptNo: values.receiptNo.trim() || null,
+    supplierId: values.supplierId,
+    warehouseId: values.warehouseId,
+    purchaseOrderId: values.purchaseOrderId || null,
+    receiptDate: values.receiptDate ? new Date(values.receiptDate).toISOString() : null,
+    notes: values.notes.trim() || null,
+    lines: values.lines.map((line) => ({
+      lineNo: Number(line.lineNo),
+      purchaseOrderLineId: line.purchaseOrderLineId || null,
+      itemId: line.itemId,
+      orderedQtySnapshot: line.orderedQtySnapshot === "" ? null : Number(line.orderedQtySnapshot),
+      receivedQty: Number(line.receivedQty),
+      uomId: line.uomId,
+      notes: line.notes.trim() || null,
+      components: line.components.map((component) => ({
+        componentItemId: component.componentItemId,
+        actualReceivedQty: Number(component.actualReceivedQty),
+        uomId: component.uomId,
+        shortageReasonCodeId: component.shortageReasonCodeId || null,
+        notes: component.notes.trim() || null,
+      })),
+    })),
+  };
+}
+
+export function listPurchaseReceiptDrafts(search: string) {
+  return requestJson<PurchaseReceiptListItem[]>(buildListUrl(search));
+}
+
+export function getPurchaseReceiptDraft(id: string) {
+  return requestJson<PurchaseReceipt>(`/api/purchase-receipts/${id}`);
+}
+
+export function listShortageReasonCodes() {
+  return requestJson<ShortageReasonCode[]>("/api/shortage-reason-codes");
+}
+
+export function createPurchaseReceiptDraft(values: PurchaseReceiptFormValues) {
+  return requestJson<PurchaseReceipt>("/api/purchase-receipts", {
+    method: "POST",
+    body: JSON.stringify(normalizeDraftPayload(values)),
+  });
+}
+
+export function updatePurchaseReceiptDraft(id: string, values: PurchaseReceiptFormValues) {
+  return requestJson<PurchaseReceipt>(`/api/purchase-receipts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizeDraftPayload(values)),
+  });
+}
+
+export function postPurchaseReceipt(id: string) {
+  return requestJson<PurchaseReceipt>(`/api/purchase-receipts/${id}/post`, {
+    method: "POST",
+  });
+}

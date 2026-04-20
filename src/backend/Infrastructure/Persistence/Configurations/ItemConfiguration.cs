@@ -33,14 +33,19 @@ public sealed class ItemConfiguration : AuditableEntityConfigurationBase<Item>
             .HasColumnName("is_sellable")
             .IsRequired();
 
-        builder.Property(entity => entity.IsComponent)
-            .HasColumnName("is_component")
+        builder.Property(entity => entity.HasComponents)
+            .HasColumnName("has_components")
             .IsRequired();
 
         builder.HasOne(entity => entity.BaseUom)
             .WithMany()
             .HasForeignKey(entity => entity.BaseUomId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(entity => entity.Components)
+            .WithOne(entity => entity.Item)
+            .HasForeignKey(entity => entity.ItemId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(entity => entity.Code)
             .IsUnique();

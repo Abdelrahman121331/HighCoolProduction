@@ -6,14 +6,17 @@ import { StatusPanel } from "../components/StatusPanel";
 const navigationGroups = [
   {
     label: "Workspace",
-    items: [{ label: "Dashboard", shortLabel: "DB", to: "/" }],
+    items: [
+      { label: "Dashboard", shortLabel: "DB", to: "/" },
+      { label: "Purchase Orders", shortLabel: "PO", to: "/purchase-orders" },
+      { label: "Purchase Receipts", shortLabel: "PR", to: "/purchase-receipts" },
+    ],
   },
   {
     label: "Master Data",
     items: [
       { label: "Items", shortLabel: "IT", to: "/items" },
-      { label: "Components", shortLabel: "CP", to: "/item-components" },
-      { label: "Item UOM Rules", shortLabel: "UR", to: "/item-uom-conversions" },
+      { label: "UOM Conversions", shortLabel: "UC", to: "/uom-conversions" },
       { label: "Suppliers", shortLabel: "SU", to: "/suppliers" },
       { label: "Warehouses", shortLabel: "WH", to: "/warehouses" },
       { label: "UOMs", shortLabel: "UM", to: "/uoms" },
@@ -38,21 +41,30 @@ function getRouteMeta(pathname: string): RouteMeta {
     };
   }
 
-  if (pathname.startsWith("/item-components")) {
+  if (pathname.startsWith("/purchase-orders")) {
     return {
-      section: "Master Data",
-      eyebrow: pathname.includes("/new") || pathname.includes("/edit") ? "Component editor" : "Assemblies",
-      title: pathname.includes("/new") ? "Create component row" : pathname.includes("/edit") ? "Edit component row" : "Item components",
-      subtitle: "Manage parent and component relationships in one place.",
+      section: "Purchasing",
+      eyebrow: pathname.includes("/new") || pathname.includes("/edit") ? "Order editor" : "Purchase orders",
+      title: pathname.includes("/new") ? "Create purchase order" : pathname.includes("/edit") ? "Edit purchase order" : "Purchase orders",
+      subtitle: "Define expected supplier quantities before receipt posting and shortage capture.",
     };
   }
 
-  if (pathname.startsWith("/item-uom-conversions")) {
+  if (pathname.startsWith("/purchase-receipts")) {
+    return {
+      section: "Purchasing",
+      eyebrow: pathname.includes("/new") || pathname.includes("/edit") ? "Receipt editor" : "Purchase receipts",
+      title: pathname.includes("/new") ? "Create purchase receipt" : pathname.includes("/edit") ? "Edit purchase receipt" : "Purchase receipts",
+      subtitle: "Capture actual deliveries, linked purchase order context, and component shortages with full traceability.",
+    };
+  }
+
+  if (pathname.startsWith("/uom-conversions")) {
     return {
       section: "Master Data",
       eyebrow: pathname.includes("/new") || pathname.includes("/edit") ? "Conversion editor" : "Measurement rules",
-      title: pathname.includes("/new") ? "Create conversion" : pathname.includes("/edit") ? "Edit conversion" : "Item UOM rules",
-      subtitle: "Keep item-specific conversion logic clear and traceable.",
+      title: pathname.includes("/new") ? "Create conversion" : pathname.includes("/edit") ? "Edit conversion" : "UOM conversions",
+      subtitle: "Keep global conversion logic clear and traceable.",
     };
   }
 

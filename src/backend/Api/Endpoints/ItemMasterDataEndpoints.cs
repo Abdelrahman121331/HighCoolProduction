@@ -1,7 +1,6 @@
 using ERP.Application.Common.Exceptions;
-using ERP.Application.MasterData.ItemComponents;
 using ERP.Application.MasterData.Items;
-using ERP.Application.MasterData.ItemUomConversions;
+using ERP.Application.MasterData.UomConversions;
 using FluentValidation;
 using FluentValidation.Results;
 
@@ -18,19 +17,12 @@ public static class ItemMasterDataEndpoints
         items.MapPut("/{id:guid}", UpdateItemAsync);
         items.MapPost("/{id:guid}/deactivate", DeactivateItemAsync);
 
-        var components = app.MapGroup("/api/item-components");
-        components.MapGet("/", ListItemComponentsAsync);
-        components.MapGet("/{id:guid}", GetItemComponentAsync);
-        components.MapPost("/", CreateItemComponentAsync);
-        components.MapPut("/{id:guid}", UpdateItemComponentAsync);
-        components.MapDelete("/{id:guid}", DeleteItemComponentAsync);
-
-        var conversions = app.MapGroup("/api/item-uom-conversions");
-        conversions.MapGet("/", ListItemUomConversionsAsync);
-        conversions.MapGet("/{id:guid}", GetItemUomConversionAsync);
-        conversions.MapPost("/", CreateItemUomConversionAsync);
-        conversions.MapPut("/{id:guid}", UpdateItemUomConversionAsync);
-        conversions.MapPost("/{id:guid}/deactivate", DeactivateItemUomConversionAsync);
+        var conversions = app.MapGroup("/api/uom-conversions");
+        conversions.MapGet("/", ListUomConversionsAsync);
+        conversions.MapGet("/{id:guid}", GetUomConversionAsync);
+        conversions.MapPost("/", CreateUomConversionAsync);
+        conversions.MapPut("/{id:guid}", UpdateUomConversionAsync);
+        conversions.MapPost("/{id:guid}/deactivate", DeactivateUomConversionAsync);
 
         return app;
     }
@@ -88,92 +80,32 @@ public static class ItemMasterDataEndpoints
         return result ? Results.NoContent() : Results.NotFound();
     }
 
-    private static async Task<IResult> ListItemComponentsAsync(
-        Guid? parentItemId,
-        Guid? componentItemId,
-        string? search,
-        IItemComponentService service,
-        CancellationToken cancellationToken)
-    {
-        var result = await service.ListAsync(
-            new ItemComponentListQuery(parentItemId, componentItemId, search),
-            cancellationToken);
-
-        return Results.Ok(result);
-    }
-
-    private static async Task<IResult> GetItemComponentAsync(
-        Guid id,
-        IItemComponentService service,
-        CancellationToken cancellationToken)
-    {
-        var result = await service.GetAsync(id, cancellationToken);
-        return result is null ? Results.NotFound() : Results.Ok(result);
-    }
-
-    private static async Task<IResult> CreateItemComponentAsync(
-        UpsertItemComponentRequest request,
-        IValidator<UpsertItemComponentRequest> validator,
-        IItemComponentService service,
-        HttpContext context,
-        CancellationToken cancellationToken)
-    {
-        return await HandleValidatedCreateAsync(
-            request,
-            validator,
-            () => service.CreateAsync(request, GetActor(context), cancellationToken));
-    }
-
-    private static async Task<IResult> UpdateItemComponentAsync(
-        Guid id,
-        UpsertItemComponentRequest request,
-        IValidator<UpsertItemComponentRequest> validator,
-        IItemComponentService service,
-        HttpContext context,
-        CancellationToken cancellationToken)
-    {
-        return await HandleValidatedUpdateAsync(
-            request,
-            validator,
-            () => service.UpdateAsync(id, request, GetActor(context), cancellationToken));
-    }
-
-    private static async Task<IResult> DeleteItemComponentAsync(
-        Guid id,
-        IItemComponentService service,
-        CancellationToken cancellationToken)
-    {
-        var result = await service.DeleteAsync(id, cancellationToken);
-        return result ? Results.NoContent() : Results.NotFound();
-    }
-
-    private static async Task<IResult> ListItemUomConversionsAsync(
-        Guid? itemId,
+    private static async Task<IResult> ListUomConversionsAsync(
         bool? isActive,
         string? search,
-        IItemUomConversionService service,
+        IUomConversionService service,
         CancellationToken cancellationToken)
     {
         var result = await service.ListAsync(
-            new ItemUomConversionListQuery(itemId, isActive, search),
+            new UomConversionListQuery(isActive, search),
             cancellationToken);
 
         return Results.Ok(result);
     }
 
-    private static async Task<IResult> GetItemUomConversionAsync(
+    private static async Task<IResult> GetUomConversionAsync(
         Guid id,
-        IItemUomConversionService service,
+        IUomConversionService service,
         CancellationToken cancellationToken)
     {
         var result = await service.GetAsync(id, cancellationToken);
         return result is null ? Results.NotFound() : Results.Ok(result);
     }
 
-    private static async Task<IResult> CreateItemUomConversionAsync(
-        UpsertItemUomConversionRequest request,
-        IValidator<UpsertItemUomConversionRequest> validator,
-        IItemUomConversionService service,
+    private static async Task<IResult> CreateUomConversionAsync(
+        UpsertUomConversionRequest request,
+        IValidator<UpsertUomConversionRequest> validator,
+        IUomConversionService service,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -183,11 +115,11 @@ public static class ItemMasterDataEndpoints
             () => service.CreateAsync(request, GetActor(context), cancellationToken));
     }
 
-    private static async Task<IResult> UpdateItemUomConversionAsync(
+    private static async Task<IResult> UpdateUomConversionAsync(
         Guid id,
-        UpsertItemUomConversionRequest request,
-        IValidator<UpsertItemUomConversionRequest> validator,
-        IItemUomConversionService service,
+        UpsertUomConversionRequest request,
+        IValidator<UpsertUomConversionRequest> validator,
+        IUomConversionService service,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -197,9 +129,9 @@ public static class ItemMasterDataEndpoints
             () => service.UpdateAsync(id, request, GetActor(context), cancellationToken));
     }
 
-    private static async Task<IResult> DeactivateItemUomConversionAsync(
+    private static async Task<IResult> DeactivateUomConversionAsync(
         Guid id,
-        IItemUomConversionService service,
+        IUomConversionService service,
         HttpContext context,
         CancellationToken cancellationToken)
     {

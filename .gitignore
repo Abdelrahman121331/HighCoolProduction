@@ -12,3 +12,6 @@ packages-microsoft-prod.deb
 *.tsbuildinfo
 src/frontend/vite.config.js
 src/frontend/vite.config.d.ts
+*.db
+*.db-shm
+*.db-wal

@@ -46,7 +46,7 @@ public sealed class DevelopmentDatabaseInitializerTests
             Assert.True(await dbContext.Uoms.AnyAsync());
             Assert.True(await dbContext.Items.AnyAsync());
             Assert.True(await dbContext.ItemComponents.AnyAsync());
-            Assert.True(await dbContext.ItemUomConversions.AnyAsync());
+            Assert.True(await dbContext.UomConversions.AnyAsync());
         }
         finally
         {

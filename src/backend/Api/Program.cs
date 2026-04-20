@@ -34,5 +34,10 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 
 app.MapMasterDataEndpoints();
 app.MapItemMasterDataEndpoints();
+app.MapPurchaseOrderEndpoints();
+app.MapPurchaseReceiptEndpoints();
+app.MapShortageReasonCodeEndpoints();
 
 app.Run();
+
+public partial class Program;

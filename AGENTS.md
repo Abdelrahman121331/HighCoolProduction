@@ -87,7 +87,7 @@ Build a production-ready ERP web application for:
 * Every stock-affecting document must generate stock ledger rows
 * Every financial movement must be traceable to a source document
 * Allocation tables are mandatory for partial settlement
-* UOM conversion must be explicit and item-aware
+* UOM conversion must be explicit and globally defined between UOMs
 * Returns must reverse effects proportionally and traceably
 
 ---

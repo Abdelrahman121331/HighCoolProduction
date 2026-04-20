@@ -13,6 +13,11 @@ public sealed class ItemService(AppDbContext dbContext) : IItemService
         var items = dbContext.Items
             .AsNoTracking()
             .Include(entity => entity.BaseUom)
+            .Include(entity => entity.Components)
+                .ThenInclude(entity => entity.ComponentItem)
+                    .ThenInclude(entity => entity!.BaseUom)
+            .Include(entity => entity.Components)
+                .ThenInclude(entity => entity.Uom)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -41,6 +46,11 @@ public sealed class ItemService(AppDbContext dbContext) : IItemService
         return dbContext.Items
             .AsNoTracking()
             .Include(entity => entity.BaseUom)
+            .Include(entity => entity.Components)
+                .ThenInclude(entity => entity.ComponentItem)
+                    .ThenInclude(entity => entity!.BaseUom)
+            .Include(entity => entity.Components)
+                .ThenInclude(entity => entity.Uom)
             .Where(entity => entity.Id == id)
             .Select(entity => ToDto(entity))
             .SingleOrDefaultAsync(cancellationToken);
@@ -58,11 +68,12 @@ public sealed class ItemService(AppDbContext dbContext) : IItemService
             BaseUomId = request.BaseUomId,
             IsActive = request.IsActive,
             IsSellable = request.IsSellable,
-            IsComponent = request.IsComponent,
+            HasComponents = request.HasComponents,
             CreatedBy = actor
         };
 
         dbContext.Items.Add(item);
+        await UpsertComponentsAsync(item, request.Components, actor, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return await GetRequiredAsync(item.Id, cancellationToken);
@@ -85,9 +96,10 @@ public sealed class ItemService(AppDbContext dbContext) : IItemService
         item.BaseUomId = request.BaseUomId;
         item.IsActive = request.IsActive;
         item.IsSellable = request.IsSellable;
-        item.IsComponent = request.IsComponent;
+        item.HasComponents = request.HasComponents;
         item.UpdatedBy = actor;
 
+        await ReplaceComponentsAsync(item, request.Components, actor, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return await GetRequiredAsync(item.Id, cancellationToken);
@@ -143,6 +155,108 @@ public sealed class ItemService(AppDbContext dbContext) : IItemService
         return item ?? throw new InvalidOperationException("Item was not found after save.");
     }
 
+    private async Task ReplaceComponentsAsync(
+        Item item,
+        IReadOnlyList<UpsertItemComponentRequest> components,
+        string actor,
+        CancellationToken cancellationToken)
+    {
+        var existingRows = await dbContext.ItemComponents
+            .Where(entity => entity.ItemId == item.Id)
+            .ToListAsync(cancellationToken);
+
+        dbContext.ItemComponents.RemoveRange(existingRows);
+        await UpsertComponentsAsync(item, components, actor, cancellationToken);
+    }
+
+    private async Task UpsertComponentsAsync(
+        Item item,
+        IReadOnlyList<UpsertItemComponentRequest> components,
+        string actor,
+        CancellationToken cancellationToken)
+    {
+        if (components.Count == 0)
+        {
+            return;
+        }
+
+        if (!item.HasComponents)
+        {
+            throw new InvalidOperationException("Component rows can only be provided when the item is marked as having components.");
+        }
+
+        var duplicateComponentIds = components
+            .GroupBy(component => component.ComponentItemId)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToArray();
+
+        if (duplicateComponentIds.Length > 0)
+        {
+            throw new DuplicateEntityException("Duplicate component rows are not allowed for the same item.");
+        }
+
+        var componentIds = components.Select(component => component.ComponentItemId).Distinct().ToArray();
+        var uomIds = components.Select(component => component.UomId).Distinct().Append(item.BaseUomId).ToArray();
+
+        var componentItems = await dbContext.Items
+            .AsNoTracking()
+            .Include(entity => entity.BaseUom)
+            .Where(entity => componentIds.Contains(entity.Id))
+            .ToDictionaryAsync(entity => entity.Id, cancellationToken);
+
+        var uoms = await dbContext.Uoms
+            .AsNoTracking()
+            .Where(entity => uomIds.Contains(entity.Id))
+            .ToDictionaryAsync(entity => entity.Id, cancellationToken);
+
+        foreach (var component in components)
+        {
+            if (component.ComponentItemId == item.Id)
+            {
+                throw new InvalidOperationException("Item components cannot reference the same item as both parent and component.");
+            }
+
+            if (!componentItems.TryGetValue(component.ComponentItemId, out var componentItem))
+            {
+                throw new InvalidOperationException("One or more component items were not found.");
+            }
+
+            if (!uoms.ContainsKey(component.UomId))
+            {
+                throw new InvalidOperationException("One or more component UOM references were not found.");
+            }
+
+            if (component.Quantity <= 0m)
+            {
+                throw new InvalidOperationException("Component quantity must be greater than zero.");
+            }
+
+            if (component.UomId != componentItem.BaseUomId)
+            {
+                var conversionExists = await dbContext.UomConversions.AnyAsync(
+                    entity => entity.FromUomId == component.UomId &&
+                              entity.ToUomId == componentItem.BaseUomId &&
+                              entity.IsActive,
+                    cancellationToken);
+
+                if (!conversionExists)
+                {
+                    throw new InvalidOperationException("A global UOM conversion is required for component quantities that do not use the component item's base UOM.");
+                }
+            }
+
+            dbContext.ItemComponents.Add(new ItemComponent
+            {
+                ItemId = item.Id,
+                ComponentItemId = component.ComponentItemId,
+                UomId = component.UomId,
+                Quantity = component.Quantity,
+                CreatedBy = actor
+            });
+        }
+    }
+
     private static ItemDto ToDto(Item entity)
     {
         return new ItemDto(
@@ -154,7 +268,25 @@ public sealed class ItemService(AppDbContext dbContext) : IItemService
             entity.BaseUom?.Name ?? string.Empty,
             entity.IsActive,
             entity.IsSellable,
-            entity.IsComponent,
+            entity.HasComponents,
+            entity.Components
+                .OrderBy(component => component.ComponentItem!.Name)
+                .ThenBy(component => component.ComponentItem!.Code)
+                .Select(component => new ItemComponentDto(
+                    component.Id,
+                    component.ItemId,
+                    component.ComponentItemId,
+                    component.ComponentItem?.Code ?? string.Empty,
+                    component.ComponentItem?.Name ?? string.Empty,
+                    component.ComponentItem?.BaseUomId ?? Guid.Empty,
+                    component.ComponentItem?.BaseUom?.Code ?? string.Empty,
+                    component.UomId,
+                    component.Uom?.Code ?? string.Empty,
+                    component.Uom?.Name ?? string.Empty,
+                    component.Quantity,
+                    component.CreatedAt,
+                    component.UpdatedAt))
+                .ToArray(),
             entity.CreatedAt,
             entity.UpdatedAt);
     }
