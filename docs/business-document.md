@@ -76,11 +76,28 @@ Approved rules:
 * if `actual == expected`, no shortage is created
 * if `actual < expected`, a shortage ledger row is created
 * if `actual > expected`, no shortage row is created
-* shortage reason is required only when a positive shortage exists
+* shortage reason is optional when a positive shortage exists
 * shortage reason decides:
   * affects supplier balance
   * affects stock
   * whether approval is required
+
+### Shortage Resolution Lifecycle
+
+Shortages remain open until they are settled through a posted shortage resolution document.
+
+Approved rules:
+
+* shortage resolution supports `Physical` and `Financial` settlement types
+* one shortage resolution may settle multiple shortage rows
+* one shortage row may be settled across multiple shortage resolutions over time
+* allocation rows are mandatory for traceability
+* physical resolution adds stock and reduces open shortage quantity
+* financial resolution creates supplier statement impact and reduces open shortage quantity by quantity-equivalent based on valuation rate
+* shortage rows close only when the open shortage quantity reaches zero
+* if a valuation basis exists, shortage open amount is reduced proportionally as physical or financial settlement is posted
+* internal-only shortage rows cannot create supplier financial impact
+* no direct shortage closure is allowed outside posted shortage resolution flows
 
 ## Inventory Rules
 
@@ -91,8 +108,21 @@ Mandatory rules:
 * stock is derived from stock ledger entries only
 * no direct stock edits are allowed
 * purchase receipt posting creates stock ledger `IN` entries
+* shortage physical resolution posting creates stock ledger `IN` entries
 * posted document effects are never overwritten
 * reversals must be done through reversing documents or reversing ledger logic
+
+## Supplier Statement Rules
+
+Supplier statement movement is also document-driven.
+
+Mandatory rules:
+
+* supplier statement entries are derived from posted business documents only
+* no manual supplier statement entries are allowed
+* shortage financial resolution posting creates supplier statement entries
+* only shortage rows that already affect supplier balance may create shortage financial statement impact
+* supplier statement rows remain traceable to shortage resolution allocations
 
 ## UI Expectations
 

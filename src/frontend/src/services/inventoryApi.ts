@@ -1,7 +1,7 @@
 import { requestJson } from "./api";
 
-export type StockTransactionType = "PurchaseReceipt" | "PurchaseReceiptReversal";
-export type SourceDocumentType = "PurchaseReceipt" | "PurchaseReceiptReversal";
+export type StockTransactionType = "PurchaseReceipt" | "PurchaseReceiptReversal" | "ShortagePhysicalResolution";
+export type SourceDocumentType = "PurchaseReceipt" | "PurchaseReceiptReversal" | "ShortageResolution";
 
 export interface InventoryFilters {
   search: string;

@@ -100,6 +100,34 @@ Current implementation uses:
 * compares expected against actual component rows
 * creates shortage ledger rows only for positive shortages
 
+### ShortageResolutionService
+
+* draft create, update, get, list
+* validates supplier, resolution type, and allocation references
+* exposes open shortage query data for the resolution UI
+* supports FIFO allocation suggestion for shortage settlement
+
+### ShortageResolutionPostingService
+
+* validates draft resolution against current open shortage state
+* keeps posting idempotent
+* applies allocation rows to shortage ledger state
+* writes stock ledger rows for physical resolutions
+* writes supplier statement rows for financial resolutions
+* marks the resolution as `Posted`
+
+### ShortageResolutionValidationService
+
+* enforces allocation correctness against current open shortage quantity and open amount
+* blocks financial settlement for non-supplier-accountable shortage rows
+* keeps quantity and valuation rules explicit before posting
+
+### ShortageResolutionAllocationService
+
+* applies physical or financial settlements row-by-row
+* updates shortage resolved and open balances
+* preserves per-allocation traceability into stock and supplier statement ledgers
+
 ## Persistence Design
 
 Key tables for this slice:
@@ -111,9 +139,14 @@ Key tables for this slice:
 * `purchase_receipt_line_components`
 * `stock_ledger_entries`
 * `shortage_ledger_entries`
+* `shortage_resolutions`
+* `shortage_resolution_allocations`
+* `supplier_statement_entries`
 
 Important constraints:
 
-* stock and shortage ledgers are append-only
+* stock and supplier statement ledgers are append-only
+* shortage resolution allocations are append-only after posting because posted resolutions are immutable
 * posted document data is never mutated into a different business effect
 * PO-to-receipt traceability is stored directly in receipt header and line rows
+* shortage rows keep lifecycle state while every settlement remains traceable through allocation rows

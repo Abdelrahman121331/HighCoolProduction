@@ -9,6 +9,9 @@ import { PurchaseOrderFormPage } from "../pages/PurchaseOrderFormPage";
 import { PurchaseOrdersPage } from "../pages/PurchaseOrdersPage";
 import { PurchaseReceiptFormPage } from "../pages/PurchaseReceiptFormPage";
 import { PurchaseReceiptsPage } from "../pages/PurchaseReceiptsPage";
+import { OpenShortagesPage } from "../pages/OpenShortagesPage";
+import { ShortageResolutionFormPage } from "../pages/ShortageResolutionFormPage";
+import { ShortageResolutionsPage } from "../pages/ShortageResolutionsPage";
 import { SupplierFormPage } from "../pages/SupplierFormPage";
 import { SuppliersPage } from "../pages/SuppliersPage";
 import { StockBalancePage } from "../pages/StockBalancePage";
@@ -33,6 +36,10 @@ export function AppRoutes() {
       <Route path="/purchase-receipts" element={<PurchaseReceiptsPage />} />
       <Route path="/purchase-receipts/new" element={<PurchaseReceiptFormPage />} />
       <Route path="/purchase-receipts/:purchaseReceiptId/edit" element={<PurchaseReceiptFormPage />} />
+      <Route path="/open-shortages" element={<OpenShortagesPage />} />
+      <Route path="/shortage-resolutions" element={<ShortageResolutionsPage />} />
+      <Route path="/shortage-resolutions/new" element={<ShortageResolutionFormPage />} />
+      <Route path="/shortage-resolutions/:shortageResolutionId/edit" element={<ShortageResolutionFormPage />} />
       <Route path="/stock-balances" element={<StockBalancePage />} />
       <Route path="/stock-movements" element={<StockMovementPage />} />
       <Route path="/items" element={<ItemsPage />} />

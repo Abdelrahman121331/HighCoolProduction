@@ -35,7 +35,17 @@ public sealed class ShortageLedgerEntry : AuditableEntity
 
     public decimal ShortageQty { get; set; }
 
-    public Guid ShortageReasonCodeId { get; set; }
+    public decimal ResolvedQty { get; set; }
+
+    public decimal OpenQty { get; set; }
+
+    public decimal? ShortageValue { get; set; }
+
+    public decimal ResolvedAmount { get; set; }
+
+    public decimal? OpenAmount { get; set; }
+
+    public Guid? ShortageReasonCodeId { get; set; }
 
     public ShortageReasonCode? ShortageReasonCode { get; set; }
 
@@ -44,4 +54,6 @@ public sealed class ShortageLedgerEntry : AuditableEntity
     public string ApprovalStatus { get; set; } = "NotRequired";
 
     public ShortageEntryStatus Status { get; set; } = ShortageEntryStatus.Open;
+
+    public ICollection<ShortageResolutionAllocation> Allocations { get; set; } = new List<ShortageResolutionAllocation>();
 }

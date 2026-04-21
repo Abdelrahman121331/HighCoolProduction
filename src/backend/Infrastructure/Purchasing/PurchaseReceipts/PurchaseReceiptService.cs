@@ -317,11 +317,6 @@ public sealed class PurchaseReceiptService(
                 }
 
                 var expectedQty = Round(receivedBaseQty * componentDefinition.Quantity);
-                if (submittedComponent.ActualReceivedQty < expectedQty && !submittedComponent.ShortageReasonCodeId.HasValue)
-                {
-                    throw new InvalidOperationException(
-                        $"Shortage reason is required for component {componentName} on line {line.LineNo} because actual quantity is less than expected quantity.");
-                }
             }
         }
 

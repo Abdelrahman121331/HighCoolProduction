@@ -178,6 +178,7 @@ export function StockBalancePage() {
               <option value="">All transaction types</option>
               <option value="PurchaseReceipt">Purchase receipt</option>
               <option value="PurchaseReceiptReversal">Purchase receipt reversal</option>
+              <option value="ShortagePhysicalResolution">Shortage physical resolution</option>
             </Select>
           </Field>
 

@@ -81,7 +81,7 @@ Preconditions:
 * linked PO supplier matches receipt supplier
 * linked PO receipt quantities do not exceed remaining posted PO quantity
 * actual component rows match the BOM component set for BOM items
-* shortage reason exists for every positive shortage
+* shortage rows are allowed with or without a shortage reason
 * shortage rows are based on persisted `expected_qty` vs `actual_received_qty` on the receipt line component rows
 
 Posting effects:
@@ -96,3 +96,51 @@ Idempotency:
 
 * reposting an already posted receipt returns the current posted document
 * duplicate stock rows are guarded by receipt status plus unique stock ledger indexing
+
+## Shortage Resolution
+
+### Draft Save
+
+Actions:
+
+* `POST /api/shortage-resolutions`
+* `PUT /api/shortage-resolutions/{id}`
+
+Effects:
+
+* persists shortage resolution header and allocation rows
+* no stock effect
+* no supplier statement effect
+* no shortage state change
+* status remains `Draft`
+
+### Post
+
+Action:
+
+* `POST /api/shortage-resolutions/{id}/post`
+
+Preconditions:
+
+* resolution exists
+* resolution status is `Draft`
+* supplier exists and is active
+* resolution type is `Physical` or `Financial`
+* at least one allocation exists
+* all allocation rows point to shortage rows owned by the same supplier
+* no allocation exceeds current open shortage quantity
+* no financial allocation exceeds current open shortage amount or open quantity-equivalent
+* only shortage rows marked `affects_supplier_balance = true` may be posted financially
+
+Posting effects:
+
+* status changes from `Draft` to `Posted`
+* physical resolution writes one stock ledger `IN` row per allocation using transaction type `ShortagePhysicalResolution`
+* financial resolution writes one supplier statement row per allocation using effect type `ShortageFinancialResolution`
+* shortage ledger resolved and open balances are updated per allocation
+* shortage status changes from `Open` to `PartiallyResolved` to `Resolved` based on remaining open quantity
+
+Idempotency:
+
+* reposting an already posted resolution returns the current posted document
+* duplicate stock and supplier statement rows are guarded by source document plus allocation indexing

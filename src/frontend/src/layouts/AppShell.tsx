@@ -15,6 +15,8 @@ const navigationGroups = [
   {
     label: "Inventory",
     items: [
+      { label: "Open Shortages", shortLabel: "OS", to: "/open-shortages" },
+      { label: "Shortage Resolutions", shortLabel: "SR", to: "/shortage-resolutions" },
       { label: "Stock Balance", shortLabel: "SB", to: "/stock-balances" },
       { label: "Stock Card", shortLabel: "SC", to: "/stock-movements" },
     ],
@@ -82,6 +84,24 @@ function getRouteMeta(pathname: string): RouteMeta {
       eyebrow: "Stock balance",
       title: "Stock balance",
       subtitle: "View warehouse balances derived from append-only stock ledger entries only.",
+    };
+  }
+
+  if (pathname.startsWith("/open-shortages")) {
+    return {
+      section: "Inventory",
+      eyebrow: "Shortage control",
+      title: "Open shortages",
+      subtitle: "Track unresolved receipt shortages, supplier accountability, and the remaining quantity or value still open.",
+    };
+  }
+
+  if (pathname.startsWith("/shortage-resolutions")) {
+    return {
+      section: "Inventory",
+      eyebrow: pathname.includes("/new") || pathname.includes("/edit") ? "Resolution editor" : "Shortage resolutions",
+      title: pathname.includes("/new") ? "Create shortage resolution" : pathname.includes("/edit") ? "Edit shortage resolution" : "Shortage resolutions",
+      subtitle: "Resolve shortage rows physically or financially with full allocation traceability back to the original receipt shortage.",
     };
   }
 

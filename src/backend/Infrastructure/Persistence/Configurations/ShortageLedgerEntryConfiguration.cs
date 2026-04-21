@@ -48,9 +48,31 @@ public sealed class ShortageLedgerEntryConfiguration : AuditableEntityConfigurat
             .HasColumnType("decimal(18,6)")
             .IsRequired();
 
-        builder.Property(entity => entity.ShortageReasonCodeId)
-            .HasColumnName("shortage_reason_code_id")
+        builder.Property(entity => entity.ResolvedQty)
+            .HasColumnName("resolved_qty")
+            .HasColumnType("decimal(18,6)")
             .IsRequired();
+
+        builder.Property(entity => entity.OpenQty)
+            .HasColumnName("open_qty")
+            .HasColumnType("decimal(18,6)")
+            .IsRequired();
+
+        builder.Property(entity => entity.ShortageValue)
+            .HasColumnName("shortage_value")
+            .HasColumnType("decimal(18,6)");
+
+        builder.Property(entity => entity.ResolvedAmount)
+            .HasColumnName("resolved_amount")
+            .HasColumnType("decimal(18,6)")
+            .IsRequired();
+
+        builder.Property(entity => entity.OpenAmount)
+            .HasColumnName("open_amount")
+            .HasColumnType("decimal(18,6)");
+
+        builder.Property(entity => entity.ShortageReasonCodeId)
+            .HasColumnName("shortage_reason_code_id");
 
         builder.Property(entity => entity.AffectsSupplierBalance)
             .HasColumnName("affects_supplier_balance")
@@ -106,6 +128,7 @@ public sealed class ShortageLedgerEntryConfiguration : AuditableEntityConfigurat
         builder.HasIndex(entity => entity.PurchaseReceiptLineId);
         builder.HasIndex(entity => entity.PurchaseOrderId);
         builder.HasIndex(entity => entity.PurchaseOrderLineId);
+        builder.HasIndex(entity => entity.Status);
         builder.HasIndex(entity => new { entity.PurchaseReceiptLineId, entity.ComponentItemId })
             .IsUnique();
     }

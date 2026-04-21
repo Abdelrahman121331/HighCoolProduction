@@ -257,38 +257,39 @@ public sealed class PurchaseReceiptDraftTests
     }
 
     [Fact]
-    public async Task Service_ShouldRequireShortageReasonWhenActualIsBelowExpected()
+    public async Task Service_ShouldAllowShortageWithoutShortageReason()
     {
         await using var dbContext = CreateDbContext();
         var references = await SeedReferencesAsync(dbContext, hasBom: true, componentQty: 2m);
         var service = CreateService(dbContext);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.CreateDraftAsync(
-                new UpsertPurchaseReceiptDraftRequest(
-                    "PRD-SHORT-0001",
-                    references.Supplier.Id,
-                    references.Warehouse.Id,
-                    null,
-                    DateTime.UtcNow.Date,
-                    null,
-                    [
-                        new UpsertPurchaseReceiptLineRequest(
-                            1,
-                            null,
-                            references.Item.Id,
-                            null,
-                            3m,
-                            references.Uom.Id,
-                            null,
-                            [
-                                new UpsertPurchaseReceiptLineComponentRequest(references.ComponentItem.Id, 5m, references.Uom.Id, null, null)
-                            ])
-                    ]),
-                "tester",
-                CancellationToken.None));
+        var receipt = await service.CreateDraftAsync(
+            new UpsertPurchaseReceiptDraftRequest(
+                "PRD-SHORT-0001",
+                references.Supplier.Id,
+                references.Warehouse.Id,
+                null,
+                DateTime.UtcNow.Date,
+                null,
+                [
+                    new UpsertPurchaseReceiptLineRequest(
+                        1,
+                        null,
+                        references.Item.Id,
+                        null,
+                        3m,
+                        references.Uom.Id,
+                        null,
+                        [
+                            new UpsertPurchaseReceiptLineComponentRequest(references.ComponentItem.Id, 5m, references.Uom.Id, null, null)
+                        ])
+                ]),
+            "tester",
+            CancellationToken.None);
 
-        Assert.Contains("Shortage reason is required for component", exception.Message, StringComparison.OrdinalIgnoreCase);
+        var component = Assert.Single(receipt.Lines.Single().Components);
+        Assert.Equal(5m, component.ActualReceivedQty);
+        Assert.Null(component.ShortageReasonCodeId);
     }
 
     [Fact]

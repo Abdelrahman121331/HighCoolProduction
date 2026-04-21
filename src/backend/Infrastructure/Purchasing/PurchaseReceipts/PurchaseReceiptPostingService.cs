@@ -240,11 +240,6 @@ public sealed class PurchaseReceiptPostingService(
                     throw new InvalidOperationException($"Expected quantity for component {componentItem.Name} on line {line.LineNo} is out of date. Refresh the receipt line and try again.");
                 }
 
-                if (actualComponent.ActualReceivedQty < expectedQty && !actualComponent.ShortageReasonCodeId.HasValue)
-                {
-                    throw new InvalidOperationException(
-                        $"Shortage reason is required for component {componentItem.Name} on line {line.LineNo} because actual quantity is less than expected quantity.");
-                }
             }
         }
     }

@@ -35,6 +35,10 @@ These decisions are mandatory for ongoing purchasing work:
 * purchase receipt posting writes stock ledger rows
 * shortage expectation is expanded from BOM against receipt quantity
 * shortage ledger rows are created only for positive shortages
+* shortage resolution posting is the only supported way to close shortage rows
+* physical shortage resolution writes stock ledger rows
+* financial shortage resolution writes supplier statement rows
+* shortage closure is allocation-driven and must support partial and multi-row settlement
 
 ## Delivery Rule
 
@@ -43,3 +47,4 @@ Any future procurement work must continue from this model and must not reintrodu
 * receipt-managed ordered quantities disconnected from PO context
 * free-form shortage expectations disconnected from item BOM
 * direct stock updates outside ledger flows
+* direct shortage closure or supplier balance edits outside posted resolution documents

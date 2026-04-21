@@ -28,7 +28,15 @@ const INITIAL_FILTERS: InventoryFilters = {
 };
 
 function formatTransactionType(value: StockLedgerEntry["transactionType"]) {
-  return value === "PurchaseReceipt" ? "Purchase receipt" : "Purchase receipt reversal";
+  if (value === "PurchaseReceipt") {
+    return "Purchase receipt";
+  }
+
+  if (value === "PurchaseReceiptReversal") {
+    return "Purchase receipt reversal";
+  }
+
+  return "Shortage physical resolution";
 }
 
 export function StockMovementPage() {
@@ -182,6 +190,7 @@ export function StockMovementPage() {
               <option value="">All transaction types</option>
               <option value="PurchaseReceipt">Purchase receipt</option>
               <option value="PurchaseReceiptReversal">Purchase receipt reversal</option>
+              <option value="ShortagePhysicalResolution">Shortage physical resolution</option>
             </Select>
           </Field>
 

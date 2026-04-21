@@ -201,6 +201,11 @@ Fields:
 * `expected_qty`
 * `actual_qty`
 * `shortage_qty`
+* `resolved_qty`
+* `open_qty`
+* `shortage_value`
+* `resolved_amount`
+* `open_amount`
 * `shortage_reason_code_id`
 * `affects_supplier_balance`
 * `approval_status`
@@ -209,7 +214,79 @@ Fields:
 
 Rules:
 
-* append-only
 * created only when `expected_qty > actual_qty`
 * `shortage_qty = expected_qty - actual_qty`
 * new shortages start as `Open`
+* `resolved_qty` starts at `0`
+* `open_qty` starts at `shortage_qty`
+* value fields remain nullable until a valuation basis is known
+* shortage lifecycle state is updated only through posted shortage resolutions
+
+## Shortage Resolution
+
+Fields:
+
+* `id`
+* `resolution_no`
+* `supplier_id`
+* `resolution_type`
+* `resolution_date`
+* `total_qty`
+* `total_amount`
+* `currency`
+* `notes`
+* `status`
+* `approved_by`
+* audit fields
+
+Rules:
+
+* new shortage resolutions start as `Draft`
+* only `Draft` resolutions are editable
+* only `Draft` resolutions can be posted
+* one resolution may allocate across multiple shortage rows
+* one shortage row may be allocated by multiple resolutions over time
+
+## Shortage Resolution Allocation
+
+Fields:
+
+* `id`
+* `resolution_id`
+* `shortage_ledger_id`
+* `allocated_qty`
+* `allocated_amount`
+* `valuation_rate`
+* `allocation_method`
+* `sequence_no`
+* audit fields
+
+Rules:
+
+* allocation rows are mandatory before posting
+* physical resolution uses `allocated_qty`
+* financial resolution uses `allocated_amount`
+* `valuation_rate` is used when financial quantity-equivalent must be derived or when shortage value basis is initialized
+
+## Supplier Statement Entry
+
+Fields:
+
+* `id`
+* `supplier_id`
+* `effect_type`
+* `source_doc_type`
+* `source_doc_id`
+* `source_line_id`
+* `amount_delta`
+* `running_balance`
+* `currency`
+* `transaction_date`
+* `notes`
+* audit fields
+
+Rules:
+
+* append-only
+* created only from posted supplier-affecting business documents
+* shortage financial resolution writes supplier statement rows with source allocation traceability

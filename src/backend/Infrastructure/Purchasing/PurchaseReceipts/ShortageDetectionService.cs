@@ -93,12 +93,9 @@ public sealed class ShortageDetectionService(
                     continue;
                 }
 
-                if (!actualComponent.ShortageReasonCodeId.HasValue)
-                {
-                    throw new InvalidOperationException("A shortage reason is required whenever actual received components are below the expected quantity.");
-                }
-
-                if (!reasons.TryGetValue(actualComponent.ShortageReasonCodeId.Value, out var reason))
+                ShortageReasonCode? reason = null;
+                if (actualComponent.ShortageReasonCodeId.HasValue &&
+                    !reasons.TryGetValue(actualComponent.ShortageReasonCodeId.Value, out reason))
                 {
                     throw new InvalidOperationException("The shortage reason was not found or is inactive.");
                 }
@@ -114,9 +111,14 @@ public sealed class ShortageDetectionService(
                     ExpectedQty = expectedQty,
                     ActualQty = actualQty,
                     ShortageQty = shortageQty,
-                    ShortageReasonCodeId = reason.Id,
-                    AffectsSupplierBalance = reason.AffectsSupplierBalance,
-                    ApprovalStatus = reason.RequiresApproval ? "PendingApproval" : "NotRequired",
+                    ResolvedQty = 0m,
+                    OpenQty = shortageQty,
+                    ShortageValue = null,
+                    ResolvedAmount = 0m,
+                    OpenAmount = null,
+                    ShortageReasonCodeId = reason?.Id,
+                    AffectsSupplierBalance = reason?.AffectsSupplierBalance ?? false,
+                    ApprovalStatus = reason?.RequiresApproval == true ? "PendingApproval" : "NotRequired",
                     Status = ShortageEntryStatus.Open,
                     CreatedBy = actor
                 });

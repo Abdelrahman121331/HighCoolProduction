@@ -155,7 +155,7 @@ Behavior:
 * receipt line components are derived from the selected item's BOM components
 * expected component quantities are calculated as `receivedQty x item component quantity`
 * actual component quantities default to expected quantities and remain editable
-* shortage reason is required only when actual component quantity is below expected quantity
+* shortage reason is optional when actual component quantity is below expected quantity
 * only `Draft` receipts can be posted
 * posting is idempotent
 * linked PO quantities cannot exceed remaining posted PO quantity
@@ -167,6 +167,97 @@ Behavior:
 ### `GET /api/shortage-reason-codes`
 
 Lists active shortage reason codes for purchase receipt shortage capture.
+
+## Open Shortages
+
+### `GET /api/shortages/open`
+
+Lists shortage rows that still have open quantity.
+
+Optional query parameters:
+
+* `search`
+* `supplierId`
+* `itemId`
+* `componentItemId`
+* `affectsSupplierBalance`
+* `status`
+* `fromDate`
+* `toDate`
+
+### `GET /api/shortages/{id}`
+
+Returns one shortage row with current open and resolved balances.
+
+## Shortage Resolutions
+
+### `GET /api/shortage-resolutions`
+
+Lists shortage resolution documents.
+
+Optional query parameters:
+
+* `search`
+* `supplierId`
+* `resolutionType`
+* `status`
+* `fromDate`
+* `toDate`
+
+### `GET /api/shortage-resolutions/{id}`
+
+Returns one shortage resolution with nested allocation rows.
+
+### `GET /api/shortage-resolutions/{id}/allocations`
+
+Returns allocation rows for one shortage resolution.
+
+### `POST /api/shortage-resolutions`
+
+Creates a shortage resolution draft.
+
+Request body:
+
+```json
+{
+  "resolutionNo": "SR-20260421-0001",
+  "supplierId": "guid",
+  "resolutionType": "Physical",
+  "resolutionDate": "2026-04-21T00:00:00.000Z",
+  "currency": "EGP",
+  "notes": "Supplier replacement shipment",
+  "allocations": [
+    {
+      "shortageLedgerId": "guid",
+      "allocatedQty": 4.0,
+      "valuationRate": 10.0,
+      "allocationMethod": "Manual",
+      "sequenceNo": 1
+    }
+  ]
+}
+```
+
+### `PUT /api/shortage-resolutions/{id}`
+
+Updates a shortage resolution draft.
+
+### `POST /api/shortage-resolutions/{id}/post`
+
+Posts a draft shortage resolution.
+
+Behavior:
+
+* physical resolution creates stock ledger `IN` entries with transaction type `ShortagePhysicalResolution`
+* financial resolution creates supplier statement entries with effect type `ShortageFinancialResolution`
+* allocation rows are mandatory and keep source shortage traceability
+* one resolution may settle multiple shortage rows
+* one shortage row may be settled across multiple resolutions over time
+* posting is idempotent
+
+### `POST /api/shortage-resolutions/suggest-allocations`
+
+Returns FIFO allocation suggestions for the selected supplier and resolution type.
 
 ## Stock Ledger
 
@@ -192,6 +283,7 @@ Behavior:
 * stock movement history is read-only
 * source document references are returned for traceability
 * running balances come from ledger posting logic and are never edited directly
+* shortage physical resolution rows appear here alongside purchase receipt stock rows
 
 ## Stock Balance
 

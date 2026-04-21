@@ -78,7 +78,7 @@ public sealed class PurchaseReceiptPostingTests
     }
 
     [Fact]
-    public async Task PostAsync_ShouldRejectMissingShortageReasonForPositiveShortage()
+    public async Task PostAsync_ShouldAllowPositiveShortageWithoutReason()
     {
         await using var dbContext = CreateDbContext();
         var references = await SeedPostingReferencesAsync(dbContext);
@@ -86,10 +86,16 @@ public sealed class PurchaseReceiptPostingTests
 
         var service = CreatePostingService(dbContext);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.PostAsync(receipt.Id, "tester", CancellationToken.None));
+        var result = await service.PostAsync(receipt.Id, "tester", CancellationToken.None);
 
-        Assert.Contains("Shortage reason is required for component", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(result);
+        Assert.Equal(DocumentStatus.Posted, result!.Status);
+
+        var shortageEntry = await dbContext.ShortageLedgerEntries.SingleAsync();
+        Assert.Equal(2m, shortageEntry.ShortageQty);
+        Assert.Null(shortageEntry.ShortageReasonCodeId);
+        Assert.False(shortageEntry.AffectsSupplierBalance);
+        Assert.Equal("NotRequired", shortageEntry.ApprovalStatus);
     }
 
     [Fact]

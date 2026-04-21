@@ -37,6 +37,7 @@ app.MapItemMasterDataEndpoints();
 app.MapPurchaseOrderEndpoints();
 app.MapPurchaseReceiptEndpoints();
 app.MapShortageReasonCodeEndpoints();
+app.MapShortageResolutionEndpoints();
 app.MapStockLedgerEndpoints();
 
 app.Run();

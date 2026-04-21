@@ -195,6 +195,11 @@ Columns:
 * `expected_qty`
 * `actual_qty`
 * `shortage_qty`
+* `resolved_qty`
+* `open_qty`
+* `shortage_value`
+* `resolved_amount`
+* `open_amount`
 * `shortage_reason_code_id`
 * `affects_supplier_balance`
 * `approval_status`
@@ -215,3 +220,79 @@ Constraints:
 * foreign key to `items(id)` on `item_id`
 * foreign key to `items(id)` on `component_item_id`
 * foreign key to `shortage_reason_codes(id)` on `shortage_reason_code_id`
+
+Behavior rules:
+
+* shortage state is derived and updated only through posted shortage resolution allocations
+
+## `shortage_resolutions`
+
+Columns:
+
+* `id`
+* `resolution_no`
+* `supplier_id`
+* `resolution_type`
+* `resolution_date`
+* `total_qty`
+* `total_amount`
+* `currency`
+* `notes`
+* `status`
+* `approved_by`
+* audit fields
+
+Constraints:
+
+* unique index on `resolution_no`
+* index on `(supplier_id, resolution_type, status, resolution_date)`
+* foreign key to `suppliers(id)` on `supplier_id`
+
+## `shortage_resolution_allocations`
+
+Columns:
+
+* `id`
+* `resolution_id`
+* `shortage_ledger_id`
+* `allocated_qty`
+* `allocated_amount`
+* `valuation_rate`
+* `allocation_method`
+* `sequence_no`
+* audit fields
+
+Constraints:
+
+* unique index on `(resolution_id, sequence_no)`
+* unique index on `(resolution_id, shortage_ledger_id)`
+* foreign key to `shortage_resolutions(id)` on `resolution_id`
+* foreign key to `shortage_ledger_entries(id)` on `shortage_ledger_id`
+
+## `supplier_statement_entries`
+
+Columns:
+
+* `id`
+* `supplier_id`
+* `effect_type`
+* `source_doc_type`
+* `source_doc_id`
+* `source_line_id`
+* `amount_delta`
+* `running_balance`
+* `currency`
+* `transaction_date`
+* `notes`
+* audit fields
+
+Constraints:
+
+* unique index on `(source_doc_id, source_line_id, effect_type)`
+* index on `(supplier_id, transaction_date)`
+* foreign key to `suppliers(id)` on `supplier_id`
+
+Behavior rules:
+
+* this table is append-only
+* no direct supplier balance edit table exists or is allowed

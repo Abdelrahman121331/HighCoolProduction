@@ -63,12 +63,25 @@ public sealed class StockLedgerQueryService(AppDbContext dbContext) : IStockLedg
             .Distinct()
             .ToArray();
 
+        var shortageResolutionIds = entries
+            .Where(entity => entity.SourceDocType == SourceDocumentType.ShortageResolution)
+            .Select(entity => entity.SourceDocId)
+            .Distinct()
+            .ToArray();
+
         var purchaseReceiptNumbers = purchaseReceiptIds.Length == 0
             ? new Dictionary<Guid, string>()
             : await dbContext.PurchaseReceipts
                 .AsNoTracking()
                 .Where(entity => purchaseReceiptIds.Contains(entity.Id))
                 .ToDictionaryAsync(entity => entity.Id, entity => entity.ReceiptNo, cancellationToken);
+
+        var shortageResolutionNumbers = shortageResolutionIds.Length == 0
+            ? new Dictionary<Guid, string>()
+            : await dbContext.ShortageResolutions
+                .AsNoTracking()
+                .Where(entity => shortageResolutionIds.Contains(entity.Id))
+                .ToDictionaryAsync(entity => entity.Id, entity => entity.ResolutionNo, cancellationToken);
 
         return entries
             .Select(entity => new StockLedgerEntryDto(
@@ -83,7 +96,7 @@ public sealed class StockLedgerQueryService(AppDbContext dbContext) : IStockLedg
                 entity.SourceDocType,
                 entity.SourceDocId,
                 entity.SourceLineId,
-                ResolveSourceDocumentNo(entity, purchaseReceiptNumbers),
+                ResolveSourceDocumentNo(entity, purchaseReceiptNumbers, shortageResolutionNumbers),
                 entity.QtyIn,
                 entity.QtyOut,
                 entity.UomId,
@@ -101,11 +114,13 @@ public sealed class StockLedgerQueryService(AppDbContext dbContext) : IStockLedg
 
     private static string ResolveSourceDocumentNo(
         StockLedgerEntry entity,
-        IReadOnlyDictionary<Guid, string> purchaseReceiptNumbers)
+        IReadOnlyDictionary<Guid, string> purchaseReceiptNumbers,
+        IReadOnlyDictionary<Guid, string> shortageResolutionNumbers)
     {
         return entity.SourceDocType switch
         {
             SourceDocumentType.PurchaseReceipt when purchaseReceiptNumbers.TryGetValue(entity.SourceDocId, out var receiptNo) => receiptNo,
+            SourceDocumentType.ShortageResolution when shortageResolutionNumbers.TryGetValue(entity.SourceDocId, out var resolutionNo) => resolutionNo,
             _ => entity.SourceDocId.ToString()
         };
     }

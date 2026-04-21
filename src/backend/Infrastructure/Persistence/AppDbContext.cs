@@ -3,6 +3,7 @@ using ERP.Domain.Inventory;
 using ERP.Domain.MasterData;
 using ERP.Domain.Purchasing;
 using ERP.Domain.Shortages;
+using ERP.Domain.Statements;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Infrastructure.Persistence;
@@ -40,6 +41,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ShortageReasonCode> ShortageReasonCodes => Set<ShortageReasonCode>();
 
     public DbSet<ShortageLedgerEntry> ShortageLedgerEntries => Set<ShortageLedgerEntry>();
+
+    public DbSet<ShortageResolution> ShortageResolutions => Set<ShortageResolution>();
+
+    public DbSet<ShortageResolutionAllocation> ShortageResolutionAllocations => Set<ShortageResolutionAllocation>();
+
+    public DbSet<SupplierStatementEntry> SupplierStatementEntries => Set<SupplierStatementEntry>();
 
     public override int SaveChanges()
     {
@@ -110,6 +117,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         if (invalidStockLedgerEntry is not null)
         {
             throw new InvalidOperationException("Stock ledger entries are append-only and cannot be edited or deleted.");
+        }
+
+        var invalidSupplierStatementEntry = ChangeTracker.Entries<SupplierStatementEntry>()
+            .FirstOrDefault(entry => entry.State is EntityState.Modified or EntityState.Deleted);
+
+        if (invalidSupplierStatementEntry is not null)
+        {
+            throw new InvalidOperationException("Supplier statement entries are append-only and cannot be edited or deleted.");
         }
     }
 }

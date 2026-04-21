@@ -1,0 +1,35 @@
+using ERP.Domain.Shortages;
+
+namespace ERP.Application.Shortages;
+
+public sealed record OpenShortageDto(
+    Guid Id,
+    Guid SupplierId,
+    string SupplierCode,
+    string SupplierName,
+    Guid PurchaseReceiptId,
+    string PurchaseReceiptNo,
+    DateTime ReceiptDate,
+    Guid PurchaseReceiptLineId,
+    Guid? PurchaseOrderId,
+    string? PurchaseOrderNo,
+    Guid ItemId,
+    string ItemCode,
+    string ItemName,
+    Guid ComponentItemId,
+    string ComponentItemCode,
+    string ComponentItemName,
+    decimal ShortageQty,
+    decimal ResolvedQty,
+    decimal OpenQty,
+    decimal? ShortageValue,
+    decimal ResolvedAmount,
+    decimal? OpenAmount,
+    ShortageEntryStatus Status,
+    bool AffectsSupplierBalance,
+    Guid? ShortageReasonCodeId,
+    string? ShortageReasonCode,
+    string? ShortageReasonName,
+    string ApprovalStatus,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);

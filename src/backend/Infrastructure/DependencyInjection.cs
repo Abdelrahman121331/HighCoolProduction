@@ -8,6 +8,7 @@ using ERP.Application.Inventory;
 using ERP.Application.Purchasing.PurchaseReceipts;
 using ERP.Application.Purchasing.PurchaseOrders;
 using ERP.Application.Purchasing.ShortageReasonCodes;
+using ERP.Application.Shortages;
 using ERP.Infrastructure.Inventory;
 using ERP.Infrastructure.MasterData.Items;
 using ERP.Infrastructure.MasterData.Customers;
@@ -19,6 +20,7 @@ using ERP.Infrastructure.Purchasing.PurchaseReceipts;
 using ERP.Infrastructure.Purchasing.PurchaseOrders;
 using ERP.Infrastructure.Purchasing.ShortageReasonCodes;
 using ERP.Infrastructure.Persistence;
+using ERP.Infrastructure.Shortages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,6 +67,10 @@ public static class DependencyInjection
         services.AddScoped<IStockLedgerService, StockLedgerService>();
         services.AddScoped<IShortageDetectionService, ShortageDetectionService>();
         services.AddScoped<IShortageReasonCodeService, ShortageReasonCodeService>();
+        services.AddScoped<IShortageResolutionService, ShortageResolutionService>();
+        services.AddScoped<IShortageResolutionPostingService, ShortageResolutionPostingService>();
+        services.AddScoped<IShortageResolutionValidationService, ShortageResolutionValidationService>();
+        services.AddScoped<IShortageResolutionAllocationService, ShortageResolutionAllocationService>();
         services.AddHostedService<DevelopmentDatabaseInitializer>();
 
         return services;
