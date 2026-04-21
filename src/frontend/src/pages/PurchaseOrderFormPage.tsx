@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { FormPageLayout, FormSection } from "../components/patterns";
+import { DocumentPageLayout, DocumentSection } from "../components/patterns";
 import { Badge, Button, EmptyState, Field, Input, Select, SkeletonLoader, Textarea, useToast } from "../components/ui";
 import { ApiError, type ValidationErrors } from "../services/api";
 import { listItems, listSuppliers, listUoms, type Item, type Supplier, type Uom } from "../services/masterDataApi";
@@ -118,6 +118,7 @@ export function PurchaseOrderFormPage() {
   const supplierLookup = useMemo(() => new Map(suppliers.map((supplier) => [supplier.id, supplier])), [suppliers]);
   const selectedSupplier = values.supplierId ? supplierLookup.get(values.supplierId) : null;
   const totalOrderedQty = values.lines.reduce((sum, line) => sum + (line.orderedQty === "" ? 0 : Number(line.orderedQty)), 0);
+  const formId = "purchase-order-form";
 
   function validate(currentValues: PurchaseOrderFormValues): ValidationErrors {
     const nextErrors: ValidationErrors = {};
@@ -260,10 +261,38 @@ export function PurchaseOrderFormPage() {
     }));
   }
 
+  const documentStatus = (
+    <>
+      <Badge tone={status === "Posted" ? "success" : status === "Canceled" ? "neutral" : "warning"}>{status}</Badge>
+      <Badge tone={receiptProgressStatus === "FullyReceived" ? "success" : receiptProgressStatus === "PartiallyReceived" ? "warning" : "neutral"}>
+        {receiptProgressStatus}
+      </Badge>
+      {values.poNo ? <Badge tone="primary">{values.poNo}</Badge> : <Badge tone="neutral">New Draft</Badge>}
+    </>
+  );
+
+  function renderActionBar() {
+    return (
+      <>
+        {purchaseOrderId && status === "Posted" ? <Button type="button" variant="secondary" isLoading={canceling} onClick={handleCancel}>Cancel purchase order</Button> : null}
+        <Link className="hc-button hc-button--secondary hc-button--md" to="/purchase-orders">Close</Link>
+        {purchaseOrderId && status === "Draft" ? <Button type="button" isLoading={posting} onClick={handlePost}>Post purchase order</Button> : null}
+        <Button disabled={!isEditable || posting || canceling} form={formId} isLoading={saving} type="submit">Save draft</Button>
+      </>
+    );
+  }
+
   return (
-    <FormPageLayout width="wide">
+    <DocumentPageLayout
+      eyebrow="Purchasing"
+      title={isEdit ? "Purchase Order" : "Create Purchase Order"}
+      description="Capture supplier commitments in a structured document layout before receipts are posted."
+      status={documentStatus}
+      actions={renderActionBar()}
+      footer={renderActionBar()}
+    >
       {loading ? (
-        <div className="hc-card hc-card--md">
+        <div className="hc-document-section">
           <div className="hc-skeleton-stack">
             <SkeletonLoader height="2.75rem" variant="rect" />
             <SkeletonLoader height="10rem" variant="rect" />
@@ -273,17 +302,17 @@ export function PurchaseOrderFormPage() {
       ) : null}
 
       {!loading && formError && suppliers.length === 0 ? (
-        <div className="hc-card hc-card--md">
+        <div className="hc-document-section">
           <EmptyState title="Unable to load purchase order" description={formError} action={<Button variant="secondary" onClick={() => setReloadKey((current) => current + 1)}>Retry</Button>} />
         </div>
       ) : null}
 
       {!loading && (!formError || suppliers.length > 0) ? (
-        <form className="hc-form-stack" onSubmit={handleSubmit}>
+        <form className="hc-document-form" id={formId} onSubmit={handleSubmit}>
           {formError ? <div className="hc-inline-error">{formError}</div> : null}
 
-          <FormSection title="Header" description="Supplier, dates, and purchase order status.">
-            <div className="hc-form-grid">
+          <DocumentSection title="Form Header" description="Core supplier and schedule data aligned for fast data entry.">
+            <div className="hc-document-form-grid">
               <Field label="PO No">
                 <Input disabled value={values.poNo} placeholder="Auto-generated on save" />
               </Field>
@@ -303,39 +332,40 @@ export function PurchaseOrderFormPage() {
               <Field label="Expected date">
                 <Input disabled={!isEditable} type="date" value={values.expectedDate} onChange={(event) => setValue("expectedDate", event.target.value)} />
               </Field>
-              <Field label="Document status">
-                <div className="po-form-toolbar">
-                  <Badge tone={status === "Posted" ? "success" : status === "Canceled" ? "neutral" : "warning"}>{status}</Badge>
-                  <Badge tone={receiptProgressStatus === "FullyReceived" ? "success" : receiptProgressStatus === "PartiallyReceived" ? "warning" : "neutral"}>
-                    {receiptProgressStatus}
-                  </Badge>
-                  {values.poNo ? <Badge tone="primary">{values.poNo}</Badge> : <Badge tone="neutral">New Draft</Badge>}
+              <Field className="hc-document-field--summary" label="Receipt progress">
+                <div className="hc-document-readonly">
+                  <strong>{receiptProgressStatus}</strong>
+                  <div className="hc-field__hint">Computed from posted receipts only.</div>
                 </div>
               </Field>
-              <Field label="Supplier summary">
-                <div className="po-summary-card">
+              <Field className="hc-document-field--summary" label="Supplier summary">
+                <div className="hc-document-readonly">
                   <strong>{selectedSupplier ? selectedSupplier.name : "No supplier selected"}</strong>
                   <div className="hc-field__hint">{selectedSupplier ? selectedSupplier.code : "Select a supplier to continue."}</div>
                 </div>
               </Field>
-            </div>
-
-            <Field label="Notes">
+              <Field className="hc-document-field--span-full" label="Notes">
               <Textarea disabled={!isEditable} value={values.notes} onChange={(event) => setValue("notes", event.target.value)} />
-            </Field>
-          </FormSection>
-
-          <FormSection title="Lines" description="Ordered items and quantities. Keep this grid aligned to how receipts will be captured later.">
-            {errors.lines ? <div className="hc-inline-error">{errors.lines[0]}</div> : null}
-            <div className="po-form-toolbar po-form-toolbar--split">
-              <div className="po-form-toolbar">
-                <Badge tone="neutral">{values.lines.length} {values.lines.length === 1 ? "line" : "lines"}</Badge>
-                <Badge tone="neutral">Ordered qty {totalOrderedQty.toLocaleString()}</Badge>
-              </div>
-              <Button disabled={!isEditable} type="button" onClick={addLine}>Add line</Button>
+              </Field>
             </div>
-            <div className="hc-card hc-card--muted hc-card--sm">
-              <table className="hc-table">
+          </DocumentSection>
+
+          <DocumentSection
+            title="Lines Grid"
+            description="Enter ordered items in the same row-based structure used later during receipt capture."
+            actions={(
+              <div className="hc-document-toolbar">
+                <div className="hc-document-toolbar__meta">
+                  <Badge tone="neutral">{values.lines.length} {values.lines.length === 1 ? "line" : "lines"}</Badge>
+                  <Badge tone="neutral">Ordered qty {totalOrderedQty.toLocaleString()}</Badge>
+                </div>
+                <Button disabled={!isEditable} type="button" onClick={addLine}>Add line</Button>
+              </div>
+            )}
+          >
+            {errors.lines ? <div className="hc-inline-error">{errors.lines[0]}</div> : null}
+            <div className="hc-document-table-wrap">
+              <table className="hc-table hc-table--compact">
                 <thead>
                   <tr>
                     <th>Line</th>
@@ -343,7 +373,7 @@ export function PurchaseOrderFormPage() {
                     <th>Ordered Qty</th>
                     <th>UOM</th>
                     <th>Notes</th>
-                    <th />
+                    <th className="hc-table__head-actions" />
                   </tr>
                 </thead>
                 <tbody>
@@ -375,7 +405,7 @@ export function PurchaseOrderFormPage() {
                       <td>
                         <Input disabled={!isEditable} value={line.notes} onChange={(event) => setLineValue(index, "notes", event.target.value)} />
                       </td>
-                      <td>
+                      <td className="hc-table__cell-actions">
                         <Button disabled={!isEditable} type="button" variant="ghost" onClick={() => removeLine(index)}>Remove</Button>
                       </td>
                     </tr>
@@ -383,16 +413,9 @@ export function PurchaseOrderFormPage() {
                 </tbody>
               </table>
             </div>
-          </FormSection>
-
-          <div className="hc-form-actions">
-            {purchaseOrderId && status === "Draft" ? <Button type="button" isLoading={posting} onClick={handlePost}>Post purchase order</Button> : null}
-            {purchaseOrderId && status === "Posted" ? <Button type="button" variant="secondary" isLoading={canceling} onClick={handleCancel}>Cancel purchase order</Button> : null}
-            <Link className="hc-button hc-button--secondary hc-button--md" to="/purchase-orders">Close</Link>
-            <Button disabled={!isEditable || posting || canceling} isLoading={saving} type="submit">Save draft</Button>
-          </div>
+          </DocumentSection>
         </form>
       ) : null}
-    </FormPageLayout>
+    </DocumentPageLayout>
   );
 }

@@ -133,6 +133,12 @@ Constraints:
 * foreign key to `warehouses(id)` on `warehouse_id`
 * foreign key to `uoms(id)` on `uom_id`
 
+Behavior rules:
+
+* this table is append-only
+* stock balance queries must derive on-hand stock from these rows only
+* no direct stock edit table exists or is allowed outside ledger-based posting flows
+
 ## `shortage_reason_codes`
 
 Columns:

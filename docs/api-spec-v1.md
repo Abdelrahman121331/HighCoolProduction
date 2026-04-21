@@ -133,6 +133,56 @@ Behavior:
 
 Lists active shortage reason codes for purchase receipt shortage capture.
 
+## Stock Ledger
+
+### `GET /api/stock-ledger`
+
+Lists stock movement rows from the append-only stock ledger.
+
+Optional query parameters:
+
+* `search`
+* `itemId`
+* `warehouseId`
+* `transactionType`
+* `fromDate`
+* `toDate`
+
+### `GET /api/stock-ledger/item/{itemId}`
+
+Lists stock movement rows for one item with the same optional filters except `itemId`.
+
+Behavior:
+
+* stock movement history is read-only
+* source document references are returned for traceability
+* running balances come from ledger posting logic and are never edited directly
+
+## Stock Balance
+
+### `GET /api/stock-balance`
+
+Lists stock balances grouped by item and warehouse.
+
+Optional query parameters:
+
+* `search`
+* `itemId`
+* `warehouseId`
+* `transactionType`
+* `fromDate`
+* `toDate`
+
+### `GET /api/stock-balance/item/{itemId}`
+
+Lists stock balances for one item with the same optional filters except `itemId`.
+
+Behavior:
+
+* balances are derived from stock ledger rows only
+* no direct stock quantity edit API exists
+* filtered balances are computed from the filtered ledger slice
+
 ## Validation Responses
 
 The API returns:

@@ -143,11 +143,7 @@ public sealed class PurchaseReceiptPostingService(
                 throw new InvalidOperationException("Purchase receipt lines must reference active items before posting.");
             }
 
-            await quantityConversionService.ConvertAsync(
-                line.ReceivedQty,
-                line.UomId,
-                item.BaseUomId,
-                cancellationToken);
+            await ConvertReceiptLineToBaseAsync(line, item, cancellationToken);
 
             if (receipt.PurchaseOrderId.HasValue)
             {
@@ -192,11 +188,7 @@ public sealed class PurchaseReceiptPostingService(
                     throw new InvalidOperationException("Purchase receipt BOM components must reference active items before posting.");
                 }
 
-                await quantityConversionService.ConvertAsync(
-                    component.Quantity,
-                    component.UomId,
-                    componentItem.BaseUomId,
-                    cancellationToken);
+                await ConvertBomComponentToBaseAsync(line.LineNo, componentItem, component.Quantity, component.UomId, cancellationToken);
             }
 
             foreach (var actualComponent in line.Components)
@@ -212,20 +204,12 @@ public sealed class PurchaseReceiptPostingService(
                     throw new InvalidOperationException("Actual received component quantities must be zero or greater before posting.");
                 }
 
-                await quantityConversionService.ConvertAsync(
-                    actualComponent.ActualReceivedQty,
-                    actualComponent.UomId,
-                    componentItem.BaseUomId,
-                    cancellationToken);
+                await ConvertActualComponentToBaseAsync(line.LineNo, componentItem, actualComponent.ActualReceivedQty, actualComponent.UomId, cancellationToken);
             }
 
             var expectedComponents = item.Components.ToDictionary(component => component.ComponentItemId);
             var actualComponents = line.Components.ToDictionary(component => component.ComponentItemId);
-            var receivedBaseQty = await quantityConversionService.ConvertAsync(
-                line.ReceivedQty,
-                line.UomId,
-                item.BaseUomId,
-                cancellationToken);
+            var receivedBaseQty = await ConvertReceiptLineToBaseAsync(line, item, cancellationToken);
 
             var extraComponentIds = actualComponents.Keys.Except(expectedComponents.Keys).ToArray();
             if (extraComponentIds.Length > 0)
@@ -268,5 +252,69 @@ public sealed class PurchaseReceiptPostingService(
     private static decimal Round(decimal value)
     {
         return decimal.Round(value, 6, MidpointRounding.AwayFromZero);
+    }
+
+    private async Task<decimal> ConvertReceiptLineToBaseAsync(
+        PurchaseReceiptLine line,
+        Domain.MasterData.Item item,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await quantityConversionService.ConvertAsync(
+                line.ReceivedQty,
+                line.UomId,
+                item.BaseUomId,
+                cancellationToken);
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("global UOM conversion", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Purchase receipt line {line.LineNo} for item {item.Code} - {item.Name} requires a global UOM conversion from the receipt UOM to the item base UOM before posting.");
+        }
+    }
+
+    private async Task<decimal> ConvertBomComponentToBaseAsync(
+        int lineNo,
+        Domain.MasterData.Item componentItem,
+        decimal quantity,
+        Guid fromUomId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await quantityConversionService.ConvertAsync(
+                quantity,
+                fromUomId,
+                componentItem.BaseUomId,
+                cancellationToken);
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("global UOM conversion", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Purchase receipt BOM component setup for line {lineNo} item {componentItem.Code} - {componentItem.Name} requires a global UOM conversion to the component base UOM.");
+        }
+    }
+
+    private async Task<decimal> ConvertActualComponentToBaseAsync(
+        int lineNo,
+        Domain.MasterData.Item componentItem,
+        decimal quantity,
+        Guid fromUomId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await quantityConversionService.ConvertAsync(
+                quantity,
+                fromUomId,
+                componentItem.BaseUomId,
+                cancellationToken);
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("global UOM conversion", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Purchase receipt actual component quantity on line {lineNo} for item {componentItem.Code} - {componentItem.Name} requires a global UOM conversion to the component base UOM before posting.");
+        }
     }
 }

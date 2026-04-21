@@ -65,16 +65,27 @@ public sealed class ShortageDetectionService(
                 var actualComponent = actualComponents[expectedComponent.ComponentItemId];
 
                 var expectedQtyInRowUom = actualComponent.ExpectedQty;
-                var expectedQty = await quantityConversionService.ConvertAsync(
-                    expectedQtyInRowUom,
-                    actualComponent.UomId,
-                    componentItem.BaseUomId,
-                    cancellationToken);
-                var actualQty = await quantityConversionService.ConvertAsync(
-                    actualComponent.ActualReceivedQty,
-                    actualComponent.UomId,
-                    componentItem.BaseUomId,
-                    cancellationToken);
+                decimal expectedQty;
+                decimal actualQty;
+
+                try
+                {
+                    expectedQty = await quantityConversionService.ConvertAsync(
+                        expectedQtyInRowUom,
+                        actualComponent.UomId,
+                        componentItem.BaseUomId,
+                        cancellationToken);
+                    actualQty = await quantityConversionService.ConvertAsync(
+                        actualComponent.ActualReceivedQty,
+                        actualComponent.UomId,
+                        componentItem.BaseUomId,
+                        cancellationToken);
+                }
+                catch (InvalidOperationException exception) when (exception.Message.Contains("global UOM conversion", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"Purchase receipt component shortage calculation on line {line.LineNo} for item {componentItem.Code} - {componentItem.Name} requires a global UOM conversion to the component base UOM.");
+                }
                 var shortageQty = Round(expectedQty - actualQty);
 
                 if (shortageQty <= 0m)

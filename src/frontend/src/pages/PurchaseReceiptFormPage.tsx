@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { FormPageLayout, FormSection } from "../components/patterns";
+import { DocumentPageLayout, DocumentSection } from "../components/patterns";
 import { Badge, Button, EmptyState, Field, Input, Select, SkeletonLoader, Textarea, useToast } from "../components/ui";
 import { ApiError, type ValidationErrors } from "../services/api";
 import {
@@ -161,6 +161,46 @@ function mapReceiptToFormValues(receipt: PurchaseReceipt): PurchaseReceiptFormVa
   };
 }
 
+function buildMissingConversionHint(
+  formError: string,
+  values: PurchaseReceiptFormValues,
+  itemsById: Map<string, Item>,
+  uomsById: Map<string, Uom>,
+  conversionMap: Map<string, number>,
+): string | null {
+  if (!formError.toLowerCase().includes("global uom conversion")) {
+    return null;
+  }
+
+  for (const line of values.lines) {
+    const item = itemsById.get(line.itemId);
+    if (!item || !line.uomId) {
+      continue;
+    }
+
+    if (line.uomId !== item.baseUomId && !conversionMap.has(`${line.uomId}:${item.baseUomId}`)) {
+      const fromUom = uomsById.get(line.uomId)?.code ?? "selected receipt UOM";
+      const toUom = item.baseUomCode ?? uomsById.get(item.baseUomId)?.code ?? "item base UOM";
+      return `Add an active UOM conversion from ${fromUom} to ${toUom} for line ${line.lineNo} item ${item.code}. This screen only supports stock posting through globally defined conversions.`;
+    }
+
+    for (const component of line.components) {
+      const definition = item.components.find((row) => row.componentItemId === component.componentItemId);
+      if (!definition || !component.uomId) {
+        continue;
+      }
+
+      if (component.uomId !== definition.componentBaseUomId && !conversionMap.has(`${component.uomId}:${definition.componentBaseUomId}`)) {
+        const fromUom = uomsById.get(component.uomId)?.code ?? definition.uomCode;
+        const toUom = definition.componentBaseUomCode;
+        return `Add an active UOM conversion from ${fromUom} to ${toUom} for component ${definition.componentItemCode} on line ${line.lineNo}. Receipt components must convert cleanly into the component base UOM.`;
+      }
+    }
+  }
+
+  return "Add the missing active global UOM conversion in UOM Conversions, then try saving or posting the receipt again.";
+}
+
 export function PurchaseReceiptFormPage() {
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -185,12 +225,18 @@ export function PurchaseReceiptFormPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const itemLookup = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
+  const uomLookup = useMemo(() => new Map(uoms.map((uom) => [uom.id, uom])), [uoms]);
   const conversionMap = useMemo(() => buildConversionMap(uomConversions), [uomConversions]);
   const selectedPurchaseOrder = purchaseOrders.find((purchaseOrder) => purchaseOrder.id === values.purchaseOrderId) ?? null;
   const isPosted = status === "Posted";
   const isEditable = status === "Draft";
   const isPurchaseOrderLinked = Boolean(values.purchaseOrderId);
   const totalComponentRows = values.lines.reduce((sum, line) => sum + line.components.length, 0);
+  const formId = "purchase-receipt-form";
+  const missingConversionHint = useMemo(
+    () => buildMissingConversionHint(formError, values, itemLookup, uomLookup, conversionMap),
+    [conversionMap, formError, itemLookup, uomLookup, values],
+  );
 
   useEffect(() => {
     let active = true;
@@ -511,10 +557,34 @@ export function PurchaseReceiptFormPage() {
     }));
   }
 
+  const documentStatus = (
+    <>
+      <Badge tone={status === "Posted" ? "success" : status === "Canceled" ? "neutral" : "warning"}>{status}</Badge>
+      {selectedPurchaseOrder ? <Badge tone="neutral">{selectedPurchaseOrder.poNo}</Badge> : <Badge tone="neutral">Manual receipt</Badge>}
+    </>
+  );
+
+  function renderActionBar() {
+    return (
+      <>
+        <Link className="hc-button hc-button--secondary hc-button--md" to="/purchase-receipts">Close</Link>
+        {purchaseReceiptId && status === "Draft" ? <Button type="button" isLoading={posting} onClick={handlePost}>Post receipt</Button> : null}
+        <Button disabled={!isEditable || posting || loadingPurchaseOrderLines} form={formId} isLoading={saving} type="submit">Save draft</Button>
+      </>
+    );
+  }
+
   return (
-    <FormPageLayout width="wide">
+    <DocumentPageLayout
+      eyebrow="Purchasing"
+      title={isEdit ? "Purchase Receipt" : "Create Purchase Receipt"}
+      description="Capture actual delivered quantities with traceable purchase order context and nested component details."
+      status={documentStatus}
+      actions={renderActionBar()}
+      footer={renderActionBar()}
+    >
       {loading ? (
-        <div className="hc-card hc-card--md">
+        <div className="hc-document-section">
           <div className="hc-skeleton-stack">
             <SkeletonLoader height="2.75rem" variant="rect" />
             <SkeletonLoader height="10rem" variant="rect" />
@@ -524,17 +594,25 @@ export function PurchaseReceiptFormPage() {
       ) : null}
 
       {!loading && formError && suppliers.length === 0 ? (
-        <div className="hc-card hc-card--md">
+        <div className="hc-document-section">
           <EmptyState title="Unable to load purchase receipt" description={formError} action={<Button variant="secondary" onClick={() => setReloadKey((current) => current + 1)}>Retry</Button>} />
         </div>
       ) : null}
 
       {!loading && (!formError || suppliers.length > 0) ? (
-        <form className="hc-form-stack" onSubmit={handleSubmit}>
+        <form className="hc-document-form" id={formId} onSubmit={handleSubmit}>
           {formError ? <div className="hc-inline-error">{formError}</div> : null}
+          {missingConversionHint ? (
+            <div className="hc-inline-help">
+              <span>{missingConversionHint}</span>
+              <Link className="hc-inline-help__link" to="/uom-conversions">
+                Open UOM conversions
+              </Link>
+            </div>
+          ) : null}
 
-          <FormSection title="Header" description="Warehouse, supplier, purchase order link, and receipt status.">
-            <div className="hc-form-grid">
+          <DocumentSection title="Form Header" description="Arrange receiving, supplier, and traceability fields in one structured grid.">
+            <div className="hc-document-form-grid">
               <Field label="Receipt No">
                 <Input disabled value={values.receiptNo} placeholder="Auto-generated on save" />
               </Field>
@@ -581,29 +659,41 @@ export function PurchaseReceiptFormPage() {
                 <Input disabled={!isEditable} type="date" value={values.receiptDate} onChange={(event) => setValue("receiptDate", event.target.value)} />
                 {errors.receiptDate ? <small className="hc-field-error">{errors.receiptDate[0]}</small> : null}
               </Field>
-              <Field label="Document status">
-                <div className="hc-form-actions">
-                  <Badge tone={status === "Posted" ? "success" : status === "Canceled" ? "neutral" : "warning"}>{status}</Badge>
-                  {selectedPurchaseOrder ? <Badge tone="neutral">{selectedPurchaseOrder.poNo}</Badge> : null}
+              <Field className="hc-document-field--summary" label="Receipt mode">
+                <div className="hc-document-readonly">
+                  <strong>{isPurchaseOrderLinked ? "Purchase order linked" : "Manual receipt"}</strong>
+                  <div className="hc-field__hint">{selectedPurchaseOrder ? selectedPurchaseOrder.supplierName : "No purchase order linked."}</div>
                 </div>
               </Field>
-            </div>
-
-            <Field label="Notes">
+              <Field className="hc-document-field--summary" label="Document status">
+                <div className="hc-document-readonly">
+                  <strong>{status}</strong>
+                  <div className="hc-field__hint">{selectedPurchaseOrder ? `Source order ${selectedPurchaseOrder.poNo}` : "Standalone receiving workflow."}</div>
+                </div>
+              </Field>
+              <Field className="hc-document-field--span-full" label="Notes">
               <Textarea disabled={!isEditable} value={values.notes} onChange={(event) => setValue("notes", event.target.value)} />
-            </Field>
-          </FormSection>
-
-          <FormSection title="Lines" description={isPurchaseOrderLinked ? "PO-linked lines use ordered quantity snapshots from the purchase order." : "Selecting an item auto-loads its BOM components and expected quantities."}>
-            {errors.lines ? <div className="hc-inline-error">{errors.lines[0]}</div> : null}
-            <div className="hc-form-actions">
-              <Button disabled={!isEditable || isPurchaseOrderLinked} type="button" onClick={addLine}>Add line</Button>
-              {isPurchaseOrderLinked && selectedPurchaseOrder ? <Badge tone="primary">Linked to {selectedPurchaseOrder.poNo}</Badge> : null}
-              <Badge tone="neutral">{values.lines.length} {values.lines.length === 1 ? "line" : "lines"}</Badge>
-              <Badge tone="neutral">{totalComponentRows} {totalComponentRows === 1 ? "component row" : "component rows"}</Badge>
+              </Field>
             </div>
-            <div className="hc-card hc-card--muted hc-card--sm">
-              <table className="hc-table">
+          </DocumentSection>
+
+          <DocumentSection
+            title="Lines Grid"
+            description={isPurchaseOrderLinked ? "PO-linked lines keep ordered snapshots from the source purchase order." : "Selecting an item auto-loads component expectations from its BOM."}
+            actions={(
+              <div className="hc-document-toolbar">
+                <div className="hc-document-toolbar__meta">
+                  {isPurchaseOrderLinked && selectedPurchaseOrder ? <Badge tone="primary">Linked to {selectedPurchaseOrder.poNo}</Badge> : null}
+                  <Badge tone="neutral">{values.lines.length} {values.lines.length === 1 ? "line" : "lines"}</Badge>
+                  <Badge tone="neutral">{totalComponentRows} {totalComponentRows === 1 ? "component row" : "component rows"}</Badge>
+                </div>
+                <Button disabled={!isEditable || isPurchaseOrderLinked} type="button" onClick={addLine}>Add line</Button>
+              </div>
+            )}
+          >
+            {errors.lines ? <div className="hc-inline-error">{errors.lines[0]}</div> : null}
+            <div className="hc-document-table-wrap">
+              <table className="hc-table hc-table--compact">
                 <thead>
                   <tr>
                     <th>Line</th>
@@ -612,7 +702,7 @@ export function PurchaseReceiptFormPage() {
                     <th>Received Qty</th>
                     <th>UOM</th>
                     <th>Notes</th>
-                    <th />
+                    <th className="hc-table__head-actions" />
                   </tr>
                 </thead>
                 <tbody>
@@ -658,7 +748,7 @@ export function PurchaseReceiptFormPage() {
                         <td>
                           <Input disabled={!isEditable} value={line.notes} onChange={(event) => setLineValue(lineIndex, "notes", event.target.value)} placeholder={item?.components.length ? "Components auto-filled below" : ""} />
                         </td>
-                        <td>
+                        <td className="hc-table__cell-actions">
                           <Button disabled={!isEditable} type="button" variant="ghost" onClick={() => removeLine(lineIndex)}>Remove</Button>
                         </td>
                       </tr>,
@@ -679,7 +769,7 @@ export function PurchaseReceiptFormPage() {
 
                             {errors[`lines.${lineIndex}.components`] ? <div className="hc-inline-error">{errors[`lines.${lineIndex}.components`][0]}</div> : null}
 
-                            <div className="hc-card hc-card--muted hc-card--sm">
+                            <div className="hc-document-table-wrap">
                               <table className="hc-table hc-table--compact">
                                 <thead>
                                   <tr>
@@ -755,15 +845,9 @@ export function PurchaseReceiptFormPage() {
                 </tbody>
               </table>
             </div>
-          </FormSection>
-
-          <div className="hc-form-actions">
-            {purchaseReceiptId && status === "Draft" ? <Button type="button" isLoading={posting} onClick={handlePost}>Post receipt</Button> : null}
-            <Link className="hc-button hc-button--secondary hc-button--md" to="/purchase-receipts">Close</Link>
-            <Button disabled={!isEditable || posting || loadingPurchaseOrderLines} isLoading={saving} type="submit">Save draft</Button>
-          </div>
+          </DocumentSection>
         </form>
       ) : null}
-    </FormPageLayout>
+    </DocumentPageLayout>
   );
 }

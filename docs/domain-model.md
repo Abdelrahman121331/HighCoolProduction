@@ -141,6 +141,10 @@ Rules:
 * purchase receipt posting writes stock `IN`
 * `base_qty` is stored in item base UOM
 * `running_balance_qty` is derived per `(item_id, warehouse_id)`
+* stock balance is always derived from stock ledger rows only
+* stock ledger rows cannot be edited or deleted after they are written
+* direct stock quantity edits are not allowed anywhere in the system
+* corrections must be represented as reversing or adjustment ledger entries
 
 ## Shortage Reason Code
 

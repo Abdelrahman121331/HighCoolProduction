@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, type ValidationErrors } from "../services/api";
-import { FormPageLayout, FormSection } from "../components/patterns";
+import { DocumentPageLayout, DocumentSection } from "../components/patterns";
 import { Button, Checkbox, EmptyState, Field, Input, SkeletonLoader, useToast } from "../components/ui";
 import {
   createUom,
@@ -29,6 +29,7 @@ export function UomFormPage() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const formId = "uom-form";
 
   useEffect(() => {
     if (!uomId) {
@@ -128,25 +129,43 @@ export function UomFormPage() {
     setValues((current) => ({ ...current, [key]: value }));
   }
 
+  function renderActionBar() {
+    return (
+      <>
+        <Link className="hc-button hc-button--secondary hc-button--md" to="/uoms">Close</Link>
+        <Button form={formId} isLoading={saving} type="submit">{isEdit ? "Save UOM" : "Create UOM"}</Button>
+      </>
+    );
+  }
+
   return (
-    <FormPageLayout eyebrow="Master Data" title={isEdit ? "Edit UOM" : "Create UOM"} description="Set the measurement code and precision rules." actions={<Link className="hc-button hc-button--secondary hc-button--md" to="/uoms">Back to UOMs</Link>}>
-      {loading ? <div className="hc-card hc-card--md"><div className="hc-skeleton-stack"><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /></div></div> : null}
-      {!loading && formError && isEdit ? <div className="hc-card hc-card--md"><EmptyState title="Unable to load UOM" description={formError} action={<Button variant="secondary" onClick={() => setReloadKey((current) => current + 1)}>Retry</Button>} /></div> : null}
+    <DocumentPageLayout
+      eyebrow="Master Data"
+      title={isEdit ? "Edit UOM" : "Create UOM"}
+      description="Maintain measurement identity, precision, and usage rules in a structured full-width form."
+      actions={renderActionBar()}
+      footer={renderActionBar()}
+    >
+      {loading ? <div className="hc-document-section"><div className="hc-skeleton-stack"><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /></div></div> : null}
+      {!loading && formError && isEdit ? <div className="hc-document-section"><EmptyState title="Unable to load UOM" description={formError} action={<Button variant="secondary" onClick={() => setReloadKey((current) => current + 1)}>Retry</Button>} /></div> : null}
       {!loading && (!formError || !isEdit) ? (
-        <form className="hc-form-stack" onSubmit={handleSubmit}>
+        <form className="hc-document-form" id={formId} onSubmit={handleSubmit}>
           {formError ? <div className="hc-inline-error">{formError}</div> : null}
-          <FormSection title="Measurement definition" description="Code, name, and fraction rules.">
-            <div className="hc-form-grid">
+          <DocumentSection title="Form Header" description="Keep measurement fields compact, aligned, and easy to scan.">
+            <div className="hc-document-form-grid">
               <Field label="Code" required><Input value={values.code} onChange={(event) => setValue("code", event.target.value)} />{errors.code ? <small className="hc-field-error">{errors.code[0]}</small> : null}</Field>
               <Field label="Name" required><Input value={values.name} onChange={(event) => setValue("name", event.target.value)} />{errors.name ? <small className="hc-field-error">{errors.name[0]}</small> : null}</Field>
+              <Field className="hc-document-field--span-full" label="Precision" required hint="Allowed range is 0 to 6 decimal places."><Input max={6} min={0} type="number" value={values.precision} onChange={(event) => setValue("precision", Number(event.target.value))} />{errors.precision ? <small className="hc-field-error">{errors.precision[0]}</small> : null}</Field>
+              <Field className="hc-document-field--span-full" label="Usage">
+                <div className="hc-document-form">
+                  <Checkbox checked={values.allowsFraction} label="Allows fractional quantities" onChange={(event) => setValue("allowsFraction", event.target.checked)} />
+                  <Checkbox checked={values.isActive} label="Active UOM" onChange={(event) => setValue("isActive", event.target.checked)} />
+                </div>
+              </Field>
             </div>
-            <Field label="Precision" required hint="Allowed range is 0 to 6 decimal places."><Input max={6} min={0} type="number" value={values.precision} onChange={(event) => setValue("precision", Number(event.target.value))} />{errors.precision ? <small className="hc-field-error">{errors.precision[0]}</small> : null}</Field>
-            <Checkbox checked={values.allowsFraction} label="Allows fractional quantities" onChange={(event) => setValue("allowsFraction", event.target.checked)} />
-            <Checkbox checked={values.isActive} label="Active UOM" onChange={(event) => setValue("isActive", event.target.checked)} />
-          </FormSection>
-          <div className="hc-form-actions"><Link className="hc-button hc-button--ghost hc-button--md" to="/uoms">Cancel</Link><Button isLoading={saving} type="submit">{isEdit ? "Save UOM" : "Create UOM"}</Button></div>
+          </DocumentSection>
         </form>
       ) : null}
-    </FormPageLayout>
+    </DocumentPageLayout>
   );
 }

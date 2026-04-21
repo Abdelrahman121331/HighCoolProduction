@@ -397,11 +397,12 @@ a {
 
 .app-main__content {
   min-width: 0;
-  padding: 2rem;
+  padding: 1.5rem;
+  background: #f3f5f7;
 }
 
 .app-main__page {
-  gap: 2rem;
+  gap: 1.25rem;
 }
 
 .hero {
@@ -492,7 +493,7 @@ a {
   }
 
   .app-main__content {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 }
 

@@ -33,11 +33,20 @@ public sealed class StockLedgerService(
                     .FirstOrDefaultAsync(cancellationToken);
             }
 
-            var baseQty = await quantityConversionService.ConvertAsync(
-                line.ReceivedQty,
-                line.UomId,
-                item.BaseUomId,
-                cancellationToken);
+            decimal baseQty;
+            try
+            {
+                baseQty = await quantityConversionService.ConvertAsync(
+                    line.ReceivedQty,
+                    line.UomId,
+                    item.BaseUomId,
+                    cancellationToken);
+            }
+            catch (InvalidOperationException exception) when (exception.Message.Contains("global UOM conversion", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Purchase receipt line {line.LineNo} for item {item.Code} - {item.Name} requires a global UOM conversion from the receipt UOM to the item base UOM before stock ledger posting.");
+            }
 
             runningBalance += baseQty;
             runningBalances[key] = runningBalance;

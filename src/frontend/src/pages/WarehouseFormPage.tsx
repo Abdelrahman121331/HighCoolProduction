@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, type ValidationErrors } from "../services/api";
-import { FormPageLayout, FormSection } from "../components/patterns";
+import { DocumentPageLayout, DocumentSection } from "../components/patterns";
 import { Button, Checkbox, EmptyState, Field, Input, SkeletonLoader, useToast } from "../components/ui";
 import {
   createWarehouse,
@@ -28,6 +28,7 @@ export function WarehouseFormPage() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const formId = "warehouse-form";
 
   useEffect(() => {
     if (!warehouseId) {
@@ -122,24 +123,40 @@ export function WarehouseFormPage() {
     setValues((current) => ({ ...current, [key]: value }));
   }
 
+  function renderActionBar() {
+    return (
+      <>
+        <Link className="hc-button hc-button--secondary hc-button--md" to="/warehouses">Close</Link>
+        <Button form={formId} isLoading={saving} type="submit">{isEdit ? "Save warehouse" : "Create warehouse"}</Button>
+      </>
+    );
+  }
+
   return (
-    <FormPageLayout eyebrow="Master Data" title={isEdit ? "Edit warehouse" : "Create warehouse"} description="Set the warehouse identity and location." actions={<Link className="hc-button hc-button--secondary hc-button--md" to="/warehouses">Back to warehouses</Link>}>
-      {loading ? <div className="hc-card hc-card--md"><div className="hc-skeleton-stack"><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /></div></div> : null}
-      {!loading && formError && isEdit ? <div className="hc-card hc-card--md"><EmptyState title="Unable to load warehouse" description={formError} action={<Button variant="secondary" onClick={() => setReloadKey((current) => current + 1)}>Retry</Button>} /></div> : null}
+    <DocumentPageLayout
+      eyebrow="Master Data"
+      title={isEdit ? "Edit Warehouse" : "Create Warehouse"}
+      description="Maintain warehouse identity, location reference, and operational status in a consistent ERP form."
+      actions={renderActionBar()}
+      footer={renderActionBar()}
+    >
+      {loading ? <div className="hc-document-section"><div className="hc-skeleton-stack"><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /></div></div> : null}
+      {!loading && formError && isEdit ? <div className="hc-document-section"><EmptyState title="Unable to load warehouse" description={formError} action={<Button variant="secondary" onClick={() => setReloadKey((current) => current + 1)}>Retry</Button>} /></div> : null}
       {!loading && (!formError || !isEdit) ? (
-        <form className="hc-form-stack" onSubmit={handleSubmit}>
+        <form className="hc-document-form" id={formId} onSubmit={handleSubmit}>
           {formError ? <div className="hc-inline-error">{formError}</div> : null}
-          <FormSection title="Warehouse identity" description="Code, name, and optional location.">
-            <div className="hc-form-grid">
+          <DocumentSection title="Form Header" description="Keep warehouse fields aligned and predictable for quick maintenance.">
+            <div className="hc-document-form-grid">
               <Field label="Code" required><Input value={values.code} onChange={(event) => setValue("code", event.target.value)} />{errors.code ? <small className="hc-field-error">{errors.code[0]}</small> : null}</Field>
               <Field label="Name" required><Input value={values.name} onChange={(event) => setValue("name", event.target.value)} />{errors.name ? <small className="hc-field-error">{errors.name[0]}</small> : null}</Field>
+              <Field className="hc-document-field--span-full" label="Location" hint="Optional branch, zone, or operational reference."><Input value={values.location} onChange={(event) => setValue("location", event.target.value)} />{errors.location ? <small className="hc-field-error">{errors.location[0]}</small> : null}</Field>
+              <Field className="hc-document-field--span-full" label="Status">
+                <Checkbox checked={values.isActive} label="Active warehouse" onChange={(event) => setValue("isActive", event.target.checked)} />
+              </Field>
             </div>
-            <Field label="Location" hint="Optional branch, zone, or operational reference."><Input value={values.location} onChange={(event) => setValue("location", event.target.value)} />{errors.location ? <small className="hc-field-error">{errors.location[0]}</small> : null}</Field>
-            <Checkbox checked={values.isActive} label="Active warehouse" onChange={(event) => setValue("isActive", event.target.checked)} />
-          </FormSection>
-          <div className="hc-form-actions"><Link className="hc-button hc-button--ghost hc-button--md" to="/warehouses">Cancel</Link><Button isLoading={saving} type="submit">{isEdit ? "Save warehouse" : "Create warehouse"}</Button></div>
+          </DocumentSection>
         </form>
       ) : null}
-    </FormPageLayout>
+    </DocumentPageLayout>
   );
 }

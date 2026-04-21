@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, type ValidationErrors } from "../services/api";
-import { FormPageLayout, FormSection } from "../components/patterns";
+import { DocumentPageLayout, DocumentSection } from "../components/patterns";
 import { Button, Checkbox, EmptyState, Field, Input, Select, SkeletonLoader, useToast } from "../components/ui";
 import {
   createUomConversion,
@@ -35,6 +35,7 @@ export function UomConversionFormPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const formId = "uom-conversion-form";
 
   useEffect(() => {
     let active = true;
@@ -131,15 +132,30 @@ export function UomConversionFormPage() {
     setValues((current) => ({ ...current, [key]: value }));
   }
 
+  function renderActionBar() {
+    return (
+      <>
+        <Link className="hc-button hc-button--secondary hc-button--md" to="/uom-conversions">Close</Link>
+        <Button form={formId} isLoading={saving} type="submit">{isEdit ? "Save conversion" : "Create conversion"}</Button>
+      </>
+    );
+  }
+
   return (
-    <FormPageLayout eyebrow="Master Data" title={isEdit ? "Edit UOM conversion" : "Create UOM conversion"} description="Define a global conversion rule between two UOMs." actions={<Link className="hc-button hc-button--secondary hc-button--md" to="/uom-conversions">Back to conversions</Link>}>
-      {loading ? <div className="hc-card hc-card--md"><div className="hc-skeleton-stack"><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /></div></div> : null}
-      {!loading && formError && uoms.length === 0 ? <div className="hc-card hc-card--md"><EmptyState title="Unable to load UOM conversion form" description={formError} action={<Button variant="secondary" onClick={() => setReloadKey((current) => current + 1)}>Retry</Button>} /></div> : null}
+    <DocumentPageLayout
+      eyebrow="Master Data"
+      title={isEdit ? "Edit UOM Conversion" : "Create UOM Conversion"}
+      description="Define global measurement rules with the same structured ERP form pattern used across the workspace."
+      actions={renderActionBar()}
+      footer={renderActionBar()}
+    >
+      {loading ? <div className="hc-document-section"><div className="hc-skeleton-stack"><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /><SkeletonLoader height="2.75rem" variant="rect" /></div></div> : null}
+      {!loading && formError && uoms.length === 0 ? <div className="hc-document-section"><EmptyState title="Unable to load UOM conversion form" description={formError} action={<Button variant="secondary" onClick={() => setReloadKey((current) => current + 1)}>Retry</Button>} /></div> : null}
       {!loading && (!formError || uoms.length > 0) ? (
-        <form className="hc-form-stack" onSubmit={handleSubmit}>
+        <form className="hc-document-form" id={formId} onSubmit={handleSubmit}>
           {formError ? <div className="hc-inline-error">{formError}</div> : null}
-          <FormSection title="Conversion definition" description="Choose the UOM pair, factor, and rounding mode.">
-            <div className="hc-form-grid">
+          <DocumentSection title="Form Header" description="Keep conversion pairs and numeric rules aligned in a predictable two-column layout.">
+            <div className="hc-document-form-grid">
               <Field label="From UOM" required>
                 <Select value={values.fromUomId} onChange={(event) => setValue("fromUomId", event.target.value)}>
                   <option value="">Select from UOM</option>
@@ -158,9 +174,6 @@ export function UomConversionFormPage() {
                 </Select>
                 {errors.toUomId ? <small className="hc-field-error">{errors.toUomId[0]}</small> : null}
               </Field>
-            </div>
-
-            <div className="hc-form-grid">
               <Field label="Factor" required>
                 <Input min={0.000001} step="0.000001" type="number" value={values.factor} onChange={(event) => setValue("factor", Number(event.target.value))} />
                 {errors.factor ? <small className="hc-field-error">{errors.factor[0]}</small> : null}
@@ -172,17 +185,13 @@ export function UomConversionFormPage() {
                   ))}
                 </Select>
               </Field>
+              <Field className="hc-document-field--span-full" label="Status">
+                <Checkbox checked={values.isActive} label="Active conversion rule" onChange={(event) => setValue("isActive", event.target.checked)} />
+              </Field>
             </div>
-
-            <Checkbox checked={values.isActive} label="Active conversion rule" onChange={(event) => setValue("isActive", event.target.checked)} />
-          </FormSection>
-
-          <div className="hc-form-actions">
-            <Link className="hc-button hc-button--ghost hc-button--md" to="/uom-conversions">Cancel</Link>
-            <Button isLoading={saving} type="submit">{isEdit ? "Save conversion" : "Create conversion"}</Button>
-          </div>
+          </DocumentSection>
         </form>
       ) : null}
-    </FormPageLayout>
+    </DocumentPageLayout>
   );
 }

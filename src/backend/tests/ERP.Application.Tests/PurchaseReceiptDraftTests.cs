@@ -291,6 +291,41 @@ public sealed class PurchaseReceiptDraftTests
         Assert.Contains("Shortage reason is required for component", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Service_ShouldShowContextWhenReceiptLineUomConversionIsMissing()
+    {
+        await using var dbContext = CreateDbContext();
+        var references = await SeedReferencesAsync(dbContext, includeAltReceiptUom: true);
+        var service = CreateService(dbContext);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateDraftAsync(
+                new UpsertPurchaseReceiptDraftRequest(
+                    "PRD-UOM-0001",
+                    references.Supplier.Id,
+                    references.Warehouse.Id,
+                    null,
+                    DateTime.UtcNow.Date,
+                    null,
+                    [
+                        new UpsertPurchaseReceiptLineRequest(
+                            1,
+                            null,
+                            references.Item.Id,
+                            null,
+                            2m,
+                            references.AltReceiptUom!.Id,
+                            null,
+                            [])
+                    ]),
+                "tester",
+                CancellationToken.None));
+
+        Assert.Contains("Purchase receipt line 1", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(references.Item.Code, exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("global UOM conversion", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static PurchaseReceiptService CreateService(AppDbContext dbContext)
     {
         var quantityConversionService = new QuantityConversionService(dbContext);
@@ -306,10 +341,11 @@ public sealed class PurchaseReceiptDraftTests
         return new AppDbContext(options);
     }
 
-    private static async Task<(Supplier Supplier, Warehouse Warehouse, Uom Uom, Item Item, Item ComponentItem)> SeedReferencesAsync(
+    private static async Task<(Supplier Supplier, Warehouse Warehouse, Uom Uom, Item Item, Item ComponentItem, Uom? AltReceiptUom)> SeedReferencesAsync(
         AppDbContext dbContext,
         bool hasBom = false,
-        decimal componentQty = 1m)
+        decimal componentQty = 1m,
+        bool includeAltReceiptUom = false)
     {
         var supplier = new Supplier
         {
@@ -338,9 +374,25 @@ public sealed class PurchaseReceiptDraftTests
             CreatedBy = "seed"
         };
 
+        var altReceiptUom = includeAltReceiptUom
+            ? new Uom
+            {
+                Code = "BOX",
+                Name = "Box",
+                Precision = 0,
+                AllowsFraction = false,
+                IsActive = true,
+                CreatedBy = "seed"
+            }
+            : null;
+
         dbContext.Suppliers.Add(supplier);
         dbContext.Warehouses.Add(warehouse);
         dbContext.Uoms.Add(uom);
+        if (altReceiptUom is not null)
+        {
+            dbContext.Uoms.Add(altReceiptUom);
+        }
         await dbContext.SaveChangesAsync();
 
         var item = new Item
@@ -381,11 +433,11 @@ public sealed class PurchaseReceiptDraftTests
             await dbContext.SaveChangesAsync();
         }
 
-        return (supplier, warehouse, uom, item, componentItem);
+        return (supplier, warehouse, uom, item, componentItem, altReceiptUom);
     }
 
     private static UpsertPurchaseReceiptDraftRequest BuildDraftRequest(
-        (Supplier Supplier, Warehouse Warehouse, Uom Uom, Item Item, Item ComponentItem) references,
+        (Supplier Supplier, Warehouse Warehouse, Uom Uom, Item Item, Item ComponentItem, Uom? AltReceiptUom) references,
         string receiptNo)
     {
         return new UpsertPurchaseReceiptDraftRequest(

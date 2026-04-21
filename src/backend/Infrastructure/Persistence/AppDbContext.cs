@@ -73,6 +73,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     private void ApplyAuditMetadata()
     {
+        GuardAppendOnlyLedgers();
+
         var utcNow = DateTime.UtcNow;
 
         foreach (var entry in ChangeTracker.Entries<IAuditableEntity>())
@@ -95,6 +97,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                     ? SystemActor
                     : entry.Entity.UpdatedBy;
             }
+        }
+    }
+
+    private void GuardAppendOnlyLedgers()
+    {
+        var invalidStockLedgerEntry = ChangeTracker.Entries<StockLedgerEntry>()
+            .FirstOrDefault(entry => entry.State is EntityState.Modified or EntityState.Deleted);
+
+        if (invalidStockLedgerEntry is not null)
+        {
+            throw new InvalidOperationException("Stock ledger entries are append-only and cannot be edited or deleted.");
         }
     }
 }

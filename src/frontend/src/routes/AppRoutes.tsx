@@ -9,6 +9,8 @@ import { PurchaseReceiptFormPage } from "../pages/PurchaseReceiptFormPage";
 import { PurchaseReceiptsPage } from "../pages/PurchaseReceiptsPage";
 import { SupplierFormPage } from "../pages/SupplierFormPage";
 import { SuppliersPage } from "../pages/SuppliersPage";
+import { StockBalancePage } from "../pages/StockBalancePage";
+import { StockMovementPage } from "../pages/StockMovementPage";
 import { UomConversionFormPage } from "../pages/UomConversionFormPage";
 import { UomConversionsPage } from "../pages/UomConversionsPage";
 import { UomFormPage } from "../pages/UomFormPage";
@@ -26,6 +28,8 @@ export function AppRoutes() {
       <Route path="/purchase-receipts" element={<PurchaseReceiptsPage />} />
       <Route path="/purchase-receipts/new" element={<PurchaseReceiptFormPage />} />
       <Route path="/purchase-receipts/:purchaseReceiptId/edit" element={<PurchaseReceiptFormPage />} />
+      <Route path="/stock-balances" element={<StockBalancePage />} />
+      <Route path="/stock-movements" element={<StockMovementPage />} />
       <Route path="/items" element={<ItemsPage />} />
       <Route path="/items/new" element={<ItemFormPage />} />
       <Route path="/items/:itemId/edit" element={<ItemFormPage />} />

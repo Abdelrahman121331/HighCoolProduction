@@ -210,8 +210,10 @@ public sealed class PurchaseReceiptService(
             ? []
             : await dbContext.Items
                 .AsNoTracking()
+                .Include(entity => entity.BaseUom)
                 .Include(entity => entity.Components)
                     .ThenInclude(component => component.ComponentItem)
+                        .ThenInclude(componentItem => componentItem!.BaseUom)
                 .Include(entity => entity.Components)
                     .ThenInclude(component => component.Uom)
                 .Where(entity => itemIds.Contains(entity.Id) && entity.IsActive)
@@ -301,11 +303,7 @@ public sealed class PurchaseReceiptService(
             }
 
             var expectedComponents = item.Components.ToDictionary(component => component.ComponentItemId);
-            var receivedBaseQty = await quantityConversionService.ConvertAsync(
-                line.ReceivedQty,
-                line.UomId,
-                item.BaseUomId,
-                cancellationToken);
+            var receivedBaseQty = await ConvertLineQtyToBaseAsync(line, item, cancellationToken);
 
             foreach (var submittedComponent in line.Components)
             {
@@ -422,11 +420,7 @@ public sealed class PurchaseReceiptService(
             };
 
             var itemDefinition = itemDefinitions[line.ItemId];
-            var receivedBaseQty = await quantityConversionService.ConvertAsync(
-                line.ReceivedQty,
-                line.UomId,
-                itemDefinition.BaseUomId,
-                cancellationToken);
+            var receivedBaseQty = await ConvertLineQtyToBaseAsync(line, itemDefinition, cancellationToken);
 
             var submittedComponentMap = line.Components.ToDictionary(component => component.ComponentItemId);
             foreach (var componentDefinition in itemDefinition.Components.OrderBy(component => component.ComponentItem?.Code))
@@ -490,6 +484,27 @@ public sealed class PurchaseReceiptService(
     private static string? NormalizeOptionalText(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private async Task<decimal> ConvertLineQtyToBaseAsync(
+        UpsertPurchaseReceiptLineRequest line,
+        Item item,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await quantityConversionService.ConvertAsync(
+                line.ReceivedQty,
+                line.UomId,
+                item.BaseUomId,
+                cancellationToken);
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("global UOM conversion", StringComparison.OrdinalIgnoreCase))
+        {
+            var baseUomLabel = item.BaseUom?.Code ?? item.BaseUomId.ToString();
+            throw new InvalidOperationException(
+                $"Purchase receipt line {line.LineNo} for item {item.Code} - {item.Name} requires a global UOM conversion from the selected receipt UOM to base UOM {baseUomLabel}.");
+        }
     }
 
     private static decimal Round(decimal value)

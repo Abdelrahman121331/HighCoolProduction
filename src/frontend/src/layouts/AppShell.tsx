@@ -13,6 +13,13 @@ const navigationGroups = [
     ],
   },
   {
+    label: "Inventory",
+    items: [
+      { label: "Stock Balance", shortLabel: "SB", to: "/stock-balances" },
+      { label: "Stock Card", shortLabel: "SC", to: "/stock-movements" },
+    ],
+  },
+  {
     label: "Master Data",
     items: [
       { label: "Items", shortLabel: "IT", to: "/items" },
@@ -56,6 +63,24 @@ function getRouteMeta(pathname: string): RouteMeta {
       eyebrow: pathname.includes("/new") || pathname.includes("/edit") ? "Receipt editor" : "Purchase receipts",
       title: pathname.includes("/new") ? "Create purchase receipt" : pathname.includes("/edit") ? "Edit purchase receipt" : "Purchase receipts",
       subtitle: "Capture actual deliveries, linked purchase order context, and component shortages with full traceability.",
+    };
+  }
+
+  if (pathname.startsWith("/stock-balances")) {
+    return {
+      section: "Inventory",
+      eyebrow: "Stock balance",
+      title: "Stock balance",
+      subtitle: "View warehouse balances derived from append-only stock ledger entries only.",
+    };
+  }
+
+  if (pathname.startsWith("/stock-movements")) {
+    return {
+      section: "Inventory",
+      eyebrow: "Stock card",
+      title: "Stock card",
+      subtitle: "Trace transaction history, source document references, and running balances per item and warehouse.",
     };
   }
 

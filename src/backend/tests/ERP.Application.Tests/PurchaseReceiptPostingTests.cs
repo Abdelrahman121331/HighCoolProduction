@@ -160,6 +160,23 @@ public sealed class PurchaseReceiptPostingTests
         Assert.Equal(30m, latestEntry.RunningBalanceQty);
     }
 
+    [Fact]
+    public async Task PostAsync_ShouldShowContextWhenReceiptLineUomConversionIsMissing()
+    {
+        await using var dbContext = CreateDbContext();
+        var references = await SeedPostingReferencesAsync(dbContext, includeReceiptConversion: false);
+        var receipt = await CreateDraftReceiptAsync(dbContext, references, actualComponentQty: 40m, shortageReasonId: null);
+
+        var service = CreatePostingService(dbContext);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.PostAsync(receipt.Id, "tester", CancellationToken.None));
+
+        Assert.Contains("Purchase receipt line 1", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(references.ParentItem.Code, exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("global UOM conversion", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static IPurchaseReceiptPostingService CreatePostingService(AppDbContext dbContext)
     {
         var quantityConversionService = new QuantityConversionService(dbContext);
@@ -187,7 +204,9 @@ public sealed class PurchaseReceiptPostingTests
         return dbContext;
     }
 
-    private static async Task<PostingReferences> SeedPostingReferencesAsync(AppDbContext dbContext)
+    private static async Task<PostingReferences> SeedPostingReferencesAsync(
+        AppDbContext dbContext,
+        bool includeReceiptConversion = true)
     {
         var supplier = new Supplier
         {
@@ -231,15 +250,18 @@ public sealed class PurchaseReceiptPostingTests
         dbContext.Uoms.AddRange(pieceUom, boxUom);
         await dbContext.SaveChangesAsync();
 
-        dbContext.UomConversions.Add(new UomConversion
+        if (includeReceiptConversion)
         {
-            FromUomId = boxUom.Id,
-            ToUomId = pieceUom.Id,
-            Factor = 10m,
-            RoundingMode = RoundingMode.None,
-            IsActive = true,
-            CreatedBy = "seed"
-        });
+            dbContext.UomConversions.Add(new UomConversion
+            {
+                FromUomId = boxUom.Id,
+                ToUomId = pieceUom.Id,
+                Factor = 10m,
+                RoundingMode = RoundingMode.None,
+                IsActive = true,
+                CreatedBy = "seed"
+            });
+        }
 
         var componentItem = new Item
         {
