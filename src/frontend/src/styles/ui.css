@@ -175,6 +175,71 @@
   background: #a9362d;
 }
 
+.hc-confirmation-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.36);
+  backdrop-filter: blur(3px);
+}
+
+.hc-confirmation-dialog__panel {
+  display: grid;
+  gap: 1.15rem;
+  width: min(32rem, 100%);
+  padding: 1.35rem 1.4rem;
+  border: 1px solid rgba(209, 219, 231, 0.98);
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.99);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+}
+
+.hc-confirmation-dialog__panel--warning {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.hc-confirmation-dialog__panel--danger {
+  border-color: rgba(194, 65, 55, 0.3);
+}
+
+.hc-confirmation-dialog__copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.hc-confirmation-dialog__eyebrow {
+  margin: 0;
+  color: var(--hc-color-text-muted);
+  font-size: 0.72rem;
+  font-weight: var(--hc-font-weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hc-confirmation-dialog__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: var(--hc-font-weight-bold);
+  color: var(--hc-color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.hc-confirmation-dialog__description {
+  margin: 0;
+  color: var(--hc-color-text-secondary);
+  line-height: 1.6;
+}
+
+.hc-confirmation-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .hc-document-page {
   display: grid;
   width: 100%;
@@ -2154,6 +2219,12 @@
   padding: 0.9rem 1rem 1rem;
 }
 
+.hc-line-components--panel {
+  background:
+    linear-gradient(180deg, rgba(247, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.99) 22%),
+    #ffffff;
+}
+
 .hc-line-components__header {
   display: grid;
   gap: 0.5rem;
@@ -2732,6 +2803,12 @@
   min-width: 0;
 }
 
+.hc-statement-table__detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 @media (max-width: 1240px) {
   .hc-home__shortcut-grid,
   .hc-overview-grid {
@@ -2740,6 +2817,14 @@
 
   .hc-statement-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hc-statement-table__detail-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hc-statement-table__detail-actions {
+    justify-content: flex-start;
   }
 }
 

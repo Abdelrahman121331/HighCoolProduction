@@ -3,6 +3,7 @@ export * from "./DataTable";
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";
+export * from "./ConfirmationDialog";
 export * from "./EmptyState";
 export * from "./Field";
 export * from "./FiltersPanel";

@@ -18,7 +18,6 @@ import {
   Select,
   SkeletonLoader,
   type FilterChip,
-  useToast,
 } from "../components/ui";
 import { ApiError } from "../services/api";
 import { listSuppliers, type Supplier } from "../services/masterDataApi";
@@ -48,7 +47,6 @@ export function ShortageResolutionsPage() {
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
   const navigate = useNavigate();
-  const { showToast } = useToast();
 
   useEffect(() => {
     let active = true;
@@ -170,15 +168,6 @@ export function ShortageResolutionsPage() {
   }
 
   function handleEdit(row: ShortageResolutionListItem) {
-    if (row.status === "Posted") {
-      showToast({
-        tone: "warning",
-        title: "Posted resolution is read-only",
-        description: "Posted shortage resolutions cannot be edited directly.",
-      });
-      return;
-    }
-
     navigate(`/shortage-resolutions/${row.id}/edit`);
   }
 

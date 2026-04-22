@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { RowActions } from "../components/patterns";
 import {
   Button,
   Card,
@@ -32,6 +33,7 @@ import {
   formatEffectType,
   formatSourceType,
   groupSupplierStatementEntries,
+  type GroupedSupplierStatementRow,
 } from "../services/supplierStatementPresentation";
 
 const PAGE_SIZE = 15;
@@ -43,6 +45,18 @@ const INITIAL_FILTERS: SupplierStatementFilters = {
   sourceDocType: "",
   fromDate: "",
   toDate: "",
+}
+
+function getStatementSourcePath(sourceDocType: SupplierStatementEntry["sourceDocType"], sourceDocId: string) {
+  if (sourceDocType === "PurchaseReceipt") {
+    return `/purchase-receipts/${sourceDocId}/edit`;
+  }
+
+  if (sourceDocType === "ShortageResolution") {
+    return `/shortage-resolutions/${sourceDocId}/edit`;
+  }
+
+  return `/payments/${sourceDocId}`;
 }
 
 export function SupplierStatementPage() {
@@ -240,6 +254,17 @@ export function SupplierStatementPage() {
     setExpandedRows((current) => ({ ...current, [key]: !current[key] }));
   }
 
+  function renderViewAction(row: Pick<GroupedSupplierStatementRow, "sourceDocId" | "sourceDocType"> | Pick<SupplierStatementEntry, "sourceDocId" | "sourceDocType">) {
+    return (
+      <Link
+        className="hc-button hc-button--secondary hc-button--sm hc-table__action-button"
+        to={getStatementSourcePath(row.sourceDocType, row.sourceDocId)}
+      >
+        View
+      </Link>
+    );
+  }
+
   return (
     <section className="hc-list-page">
       <PageHeader
@@ -432,10 +457,11 @@ export function SupplierStatementPage() {
               <th scope="col">Entry date</th>
               <th scope="col">Source document</th>
               <th scope="col">Effect type</th>
-              <th scope="col">Debit</th>
-              <th scope="col">Credit</th>
-              <th scope="col">Running balance</th>
+              <th scope="col" className="hc-table__numeric">Debit</th>
+              <th scope="col" className="hc-table__numeric">Credit</th>
+              <th scope="col" className="hc-table__numeric">Running balance</th>
               <th scope="col">Notes</th>
+              <th scope="col" className="hc-table__head-actions">Actions</th>
             </tr>
           }
           rows={visibleRows.map((row) => {
@@ -475,20 +501,23 @@ export function SupplierStatementPage() {
                       <span className="hc-table__subtitle">Grouped by source document</span>
                     </div>
                   </td>
-                  <td><span className="hc-table__subtitle">{row.debit.toLocaleString()}</span></td>
-                  <td><span className="hc-table__subtitle">{row.credit.toLocaleString()}</span></td>
-                  <td>
-                    <div className="hc-table__cell-strong">
+                  <td className="hc-table__numeric"><span className="hc-table__subtitle">{row.debit.toLocaleString()}</span></td>
+                  <td className="hc-table__numeric"><span className="hc-table__subtitle">{row.credit.toLocaleString()}</span></td>
+                  <td className="hc-table__numeric">
+                    <div className="hc-table__cell-strong hc-table__cell-strong--numeric">
                       <span className="hc-table__title">{row.balanceMeaning.absoluteValue.toLocaleString()}</span>
                       <span className="hc-table__subtitle">{row.balanceMeaning.type} · {row.balanceMeaning.explanation}</span>
                     </div>
                   </td>
                   <td><span className="hc-table__subtitle">{row.notes || "No notes"}</span></td>
+                  <td className="hc-table__cell-actions">
+                    <RowActions primaryAction={renderViewAction(row)} />
+                  </td>
                 </tr>
 
                 {isExpanded ? (
                   <tr className="hc-statement-table__detail-row">
-                    <td colSpan={7}>
+                    <td colSpan={8}>
                       <div className="hc-statement-table__detail-panel">
                         <div className="hc-statement-table__detail-header">
                           <strong>Posted detail lines</strong>
@@ -515,6 +544,9 @@ export function SupplierStatementPage() {
                                   <span className="hc-table__subtitle">Credit {detail.credit.toLocaleString()}</span>
                                   <span className="hc-table__subtitle">Balance {detailBalance} · {detailBalanceType}</span>
                                   <span className="hc-table__subtitle">{detail.notes || "No notes"}</span>
+                                </div>
+                                <div className="hc-statement-table__detail-actions">
+                                  {renderViewAction(detail)}
                                 </div>
                               </div>
                             );

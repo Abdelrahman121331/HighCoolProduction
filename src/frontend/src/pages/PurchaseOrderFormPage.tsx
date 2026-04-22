@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DocumentPageLayout, DocumentSection } from "../components/patterns";
-import { Badge, Button, EmptyState, Field, Input, Select, SkeletonLoader, Textarea, useToast } from "../components/ui";
+import { Badge, Button, EmptyState, Field, Input, Select, SkeletonLoader, Textarea, useConfirmationDialog, useToast } from "../components/ui";
 import { ApiError, type ValidationErrors } from "../services/api";
 import { listItems, listSuppliers, listUoms, type Item, type Supplier, type Uom } from "../services/masterDataApi";
 import {
@@ -33,6 +33,7 @@ const initialLine = (lineNo: number): PurchaseOrderLineFormValues => ({
 
 export function PurchaseOrderFormPage() {
   const { showToast } = useToast();
+  const { confirm, dialog } = useConfirmationDialog();
   const navigate = useNavigate();
   const { purchaseOrderId } = useParams();
   const isEdit = Boolean(purchaseOrderId);
@@ -200,7 +201,15 @@ export function PurchaseOrderFormPage() {
       return;
     }
 
-    if (!window.confirm("Post this purchase order? Posted orders become immutable except through cancel.")) {
+    const confirmed = await confirm({
+      title: "Post purchase order",
+      description: "After posting, this purchase order becomes read-only and can only be corrected through the cancel flow.",
+      confirmLabel: "Post order",
+      cancelLabel: "Keep as draft",
+      tone: "warning",
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -222,7 +231,15 @@ export function PurchaseOrderFormPage() {
       return;
     }
 
-    if (!window.confirm("Cancel this purchase order?")) {
+    const confirmed = await confirm({
+      title: "Cancel purchase order",
+      description: "Canceling will mark this purchase order as canceled while keeping its history for audit and traceability.",
+      confirmLabel: "Cancel order",
+      cancelLabel: "Keep order",
+      tone: "warning",
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -416,6 +433,7 @@ export function PurchaseOrderFormPage() {
           </DocumentSection>
         </form>
       ) : null}
+      {dialog}
     </DocumentPageLayout>
   );
 }

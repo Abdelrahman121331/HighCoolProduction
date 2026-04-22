@@ -17,6 +17,7 @@ import {
   PageHeader,
   Select,
   type FilterChip,
+  useConfirmationDialog,
   useToast,
 } from "../components/ui";
 import { ApiError } from "../services/api";
@@ -50,8 +51,9 @@ export function PurchaseOrdersPage() {
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
   const { showToast } = useToast();
+  const { confirm, dialog } = useConfirmationDialog();
 
-  function handleDelete(row: PurchaseOrderListItem) {
+  async function handleDelete(row: PurchaseOrderListItem) {
     if (row.status === "Posted") {
       showToast({
         tone: "warning",
@@ -61,7 +63,15 @@ export function PurchaseOrdersPage() {
       return;
     }
 
-    if (window.confirm("Delete this purchase order? Deletion is not available in this version.")) {
+    const confirmed = await confirm({
+      title: "Delete purchase order",
+      description: "Permanent delete is not available in this version. You can confirm this message and keep working, but no deletion will happen.",
+      confirmLabel: "Understood",
+      cancelLabel: "Close",
+      tone: "warning",
+    });
+
+    if (confirmed) {
       showToast({
         tone: "info",
         title: "Delete action unavailable",
@@ -342,6 +352,7 @@ export function PurchaseOrdersPage() {
             : <EmptyState title="No purchase orders yet" description="Create the first purchase order to define expected supplier quantities." action={<Link className="hc-button hc-button--primary hc-button--md" to="/purchase-orders/new">Create purchase order</Link>} />}
         />
       ) : null}
+      {dialog}
     </section>
   );
 }

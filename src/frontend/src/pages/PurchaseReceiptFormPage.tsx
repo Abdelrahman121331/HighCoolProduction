@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { DocumentPageLayout, DocumentSection } from "../components/patterns";
-import { Badge, Button, EmptyState, Field, Input, Select, SkeletonLoader, Textarea, useToast } from "../components/ui";
+import { Badge, Button, EmptyState, Field, Input, Select, SkeletonLoader, Textarea, useConfirmationDialog, useToast } from "../components/ui";
 import { ApiError, type ValidationErrors } from "../services/api";
 import {
   listItems,
@@ -205,6 +205,7 @@ function buildMissingConversionHint(
 
 export function PurchaseReceiptFormPage() {
   const { showToast } = useToast();
+  const { confirm, dialog } = useConfirmationDialog();
   const navigate = useNavigate();
   const { purchaseReceiptId } = useParams();
   const [searchParams] = useSearchParams();
@@ -230,6 +231,12 @@ export function PurchaseReceiptFormPage() {
   const uomLookup = useMemo(() => new Map(uoms.map((uom) => [uom.id, uom])), [uoms]);
   const conversionMap = useMemo(() => buildConversionMap(uomConversions), [uomConversions]);
   const selectedPurchaseOrder = purchaseOrders.find((purchaseOrder) => purchaseOrder.id === values.purchaseOrderId) ?? null;
+  const selectablePurchaseOrders = useMemo(
+    () => purchaseOrders.filter((purchaseOrder) =>
+      purchaseOrder.status === "Posted" &&
+      (purchaseOrder.receiptProgressStatus !== "FullyReceived" || purchaseOrder.id === values.purchaseOrderId)),
+    [purchaseOrders, values.purchaseOrderId],
+  );
   const isPosted = status === "Posted";
   const isEditable = status === "Draft";
   const isPurchaseOrderLinked = Boolean(values.purchaseOrderId);
@@ -419,7 +426,15 @@ export function PurchaseReceiptFormPage() {
       return;
     }
 
-    if (!window.confirm("Post this purchase receipt? Posting writes stock ledger entries and shortage ledger entries.")) {
+    const confirmed = await confirm({
+      title: "Post purchase receipt",
+      description: "Posting will write stock ledger entries and shortage ledger entries. After posting, this receipt becomes read-only.",
+      confirmLabel: "Post receipt",
+      cancelLabel: "Keep as draft",
+      tone: "warning",
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -628,15 +643,43 @@ export function PurchaseReceiptFormPage() {
                   value={values.purchaseOrderId}
                   onChange={async (event) => {
                     const nextPurchaseOrderId = event.target.value;
-                    if (values.lines.length > 0 && !window.confirm("Change the purchase order and replace the current receipt lines?")) {
+                    if (nextPurchaseOrderId === values.purchaseOrderId) {
                       return;
+                    }
+
+                    if (values.lines.length > 0 && nextPurchaseOrderId) {
+                      const confirmed = await confirm({
+                        title: "Change purchase order",
+                        description: "Changing the purchase order will replace the current receipt lines with lines from the new order.",
+                        confirmLabel: "Change purchase order",
+                        cancelLabel: "Keep current order",
+                        tone: "warning",
+                      });
+
+                      if (!confirmed) {
+                        return;
+                      }
+                    }
+
+                    if (values.lines.length > 0 && !nextPurchaseOrderId && values.purchaseOrderId) {
+                      const confirmed = await confirm({
+                        title: "Switch to manual receipt",
+                        description: "This will clear the current purchase-order-linked lines so you can enter receipt lines manually.",
+                        confirmLabel: "Switch to manual",
+                        cancelLabel: "Keep linked order",
+                        tone: "warning",
+                      });
+
+                      if (!confirmed) {
+                        return;
+                      }
                     }
 
                     await handlePurchaseOrderSelection(nextPurchaseOrderId);
                   }}
                 >
                   <option value="">Manual receipt</option>
-                  {purchaseOrders.filter((row) => row.status === "Posted").map((purchaseOrder) => (
+                  {selectablePurchaseOrders.map((purchaseOrder) => (
                     <option key={purchaseOrder.id} value={purchaseOrder.id}>
                       {purchaseOrder.poNo} - {purchaseOrder.supplierName}
                     </option>
@@ -696,6 +739,7 @@ export function PurchaseReceiptFormPage() {
           </DocumentSection>
 
           <DocumentSection
+            className="hc-allocation-stage hc-allocation-stage--first hc-allocation-stage--selected"
             title="Lines Grid"
             description={isPurchaseOrderLinked ? "PO-linked lines keep ordered snapshots from the source purchase order." : "Selecting an item auto-loads component expectations from its BOM."}
             actions={(
@@ -710,14 +754,14 @@ export function PurchaseReceiptFormPage() {
             )}
           >
             {errors.lines ? <div className="hc-inline-error">{errors.lines[0]}</div> : null}
-            <div className="hc-document-table-wrap">
+            <div className="hc-document-table-wrap hc-document-table-wrap--task hc-document-table-wrap--selected">
               <table className="hc-table hc-table--compact">
                 <thead>
                   <tr>
                     <th>Line</th>
                     <th>Item</th>
-                    <th>Ordered Snapshot</th>
-                    <th>Received Qty</th>
+                    <th className="hc-table__numeric">Ordered Snapshot</th>
+                    <th className="hc-table__numeric">Received Qty</th>
                     <th>UOM</th>
                     <th>Notes</th>
                     <th className="hc-table__head-actions" />
@@ -729,21 +773,24 @@ export function PurchaseReceiptFormPage() {
 
                     return [
                       <tr key={`${line.lineNo}-${lineIndex}`}>
-                        <td>{line.lineNo}</td>
+                        <td className="hc-table__numeric">{line.lineNo}</td>
                         <td>
-                          <Select disabled={!isEditable || isPurchaseOrderLinked} value={line.itemId} onChange={(event) => setLineValue(lineIndex, "itemId", event.target.value)}>
-                            <option value="">Select item</option>
-                            {items.map((row) => (
-                              <option key={row.id} value={row.id}>{row.code} - {row.name}</option>
-                            ))}
-                          </Select>
-                          {errors[`lines.${lineIndex}.itemId`] ? <small className="hc-field-error">{errors[`lines.${lineIndex}.itemId`][0]}</small> : null}
+                          <div className="hc-table__cell-strong">
+                            <Select disabled={!isEditable || isPurchaseOrderLinked} value={line.itemId} onChange={(event) => setLineValue(lineIndex, "itemId", event.target.value)}>
+                              <option value="">Select item</option>
+                              {items.map((row) => (
+                                <option key={row.id} value={row.id}>{row.code} - {row.name}</option>
+                              ))}
+                            </Select>
+                            {item ? <span className="hc-table__subtitle">{item.code} · {item.name}</span> : null}
+                            {errors[`lines.${lineIndex}.itemId`] ? <small className="hc-field-error">{errors[`lines.${lineIndex}.itemId`][0]}</small> : null}
+                          </div>
                         </td>
-                        <td>
+                        <td className="hc-table__numeric">
                           <Input disabled type="number" value={line.orderedQtySnapshot} placeholder={isPurchaseOrderLinked ? "From PO" : "Optional"} />
                           {errors[`lines.${lineIndex}.orderedQtySnapshot`] ? <small className="hc-field-error">{errors[`lines.${lineIndex}.orderedQtySnapshot`][0]}</small> : null}
                         </td>
-                        <td>
+                        <td className="hc-table__numeric">
                           <Input
                             disabled={!isEditable}
                             type="number"
@@ -755,13 +802,16 @@ export function PurchaseReceiptFormPage() {
                           {errors[`lines.${lineIndex}.receivedQty`] ? <small className="hc-field-error">{errors[`lines.${lineIndex}.receivedQty`][0]}</small> : null}
                         </td>
                         <td>
-                          <Select disabled={!isEditable || isPurchaseOrderLinked} value={line.uomId} onChange={(event) => setLineValue(lineIndex, "uomId", event.target.value)}>
-                            <option value="">Select UOM</option>
-                            {uoms.map((uom) => (
-                              <option key={uom.id} value={uom.id}>{uom.code}</option>
-                            ))}
-                          </Select>
-                          {errors[`lines.${lineIndex}.uomId`] ? <small className="hc-field-error">{errors[`lines.${lineIndex}.uomId`][0]}</small> : null}
+                          <div className="hc-table__cell-strong">
+                            <Select disabled={!isEditable || isPurchaseOrderLinked} value={line.uomId} onChange={(event) => setLineValue(lineIndex, "uomId", event.target.value)}>
+                              <option value="">Select UOM</option>
+                              {uoms.map((uom) => (
+                                <option key={uom.id} value={uom.id}>{uom.code}</option>
+                              ))}
+                            </Select>
+                            {line.uomId ? <span className="hc-table__subtitle">{uomLookup.get(line.uomId)?.name ?? "Selected UOM"}</span> : null}
+                            {errors[`lines.${lineIndex}.uomId`] ? <small className="hc-field-error">{errors[`lines.${lineIndex}.uomId`][0]}</small> : null}
+                          </div>
                         </td>
                         <td>
                           <Input disabled={!isEditable} value={line.notes} onChange={(event) => setLineValue(lineIndex, "notes", event.target.value)} placeholder={item?.components.length ? "Components auto-filled below" : ""} />
@@ -772,7 +822,7 @@ export function PurchaseReceiptFormPage() {
                       </tr>,
                       <tr key={`components-${line.lineNo}-${lineIndex}`} className="hc-table__detail-row">
                         <td colSpan={7}>
-                          <div className="hc-line-components">
+                          <div className="hc-line-components hc-line-components--panel">
                             <div className="hc-line-components__header">
                               <div className="po-form-toolbar">
                                 <Badge tone="neutral">{item?.code ?? "No item selected"}</Badge>
@@ -787,13 +837,13 @@ export function PurchaseReceiptFormPage() {
 
                             {errors[`lines.${lineIndex}.components`] ? <div className="hc-inline-error">{errors[`lines.${lineIndex}.components`][0]}</div> : null}
 
-                            <div className="hc-document-table-wrap">
+                            <div className="hc-document-table-wrap hc-document-table-wrap--task hc-document-table-wrap--available">
                               <table className="hc-table hc-table--compact">
                                 <thead>
                                   <tr>
                                     <th>Component Item</th>
-                                    <th>Expected Qty</th>
-                                    <th>Actual Qty</th>
+                                    <th className="hc-table__numeric">Expected Qty</th>
+                                    <th className="hc-table__numeric">Actual Qty</th>
                                     <th>Shortage</th>
                                     <th>Notes</th>
                                   </tr>
@@ -814,13 +864,13 @@ export function PurchaseReceiptFormPage() {
                                               <span className="hc-table__subtitle">{componentDefinition?.componentItemCode ?? component.uomId}</span>
                                             </div>
                                           </td>
-                                          <td>
-                                            <div className="hc-table__cell-strong">
+                                          <td className="hc-table__numeric">
+                                            <div className="hc-table__cell-strong hc-table__cell-strong--numeric">
                                               <span className="hc-table__title">{component.expectedQty.toLocaleString()}</span>
                                               <span className="hc-table__subtitle">{componentDefinition?.uomCode ?? ""}</span>
                                             </div>
                                           </td>
-                                          <td>
+                                          <td className="hc-table__numeric">
                                             <Input
                                               disabled={!isEditable}
                                               type="number"
@@ -866,6 +916,7 @@ export function PurchaseReceiptFormPage() {
           </DocumentSection>
         </form>
       ) : null}
+      {dialog}
     </DocumentPageLayout>
   );
 }
