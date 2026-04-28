@@ -4,8 +4,20 @@ using ERP.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json.Serialization;
 
-var builder = WebApplication.CreateBuilder(args);
+const string FrontendCorsPolicy = "Frontend";
 
+var builder = WebApplication.CreateBuilder(args);
+var allowedFrontendOrigins = GetAllowedFrontendOrigins(builder.Configuration);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendCorsPolicy, policy =>
+    {
+        policy.WithOrigins(allowedFrontendOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -16,6 +28,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+
+app.UseCors(FrontendCorsPolicy);
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -43,5 +57,31 @@ app.MapSupplierStatementEndpoints();
 app.MapStockLedgerEndpoints();
 
 app.Run();
+
+static string[] GetAllowedFrontendOrigins(IConfiguration configuration)
+{
+    var configuredOrigins = configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? [];
+
+    var commaSeparatedOrigins = configuration["Cors:AllowedOrigins"]?
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+
+    var origins = configuredOrigins
+        .Concat(commaSeparatedOrigins)
+        .Select(origin => origin.Trim().TrimEnd('/'))
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+    return origins.Length > 0
+        ? origins
+        :
+        [
+            "http://localhost:5173",
+            "http://localhost:4173",
+            "https://high-cool-production.vercel.app"
+        ];
+}
 
 public partial class Program;
